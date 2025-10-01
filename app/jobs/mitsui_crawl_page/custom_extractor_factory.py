@@ -8,7 +8,6 @@ from app.utils.html_processor_utils import HtmlProcessor
 from app.jobs.mitsui_crawl_page.image_extractor import ImageExtractor
 from app.services.station_service import StationService
 from app.jobs.mitsui_crawl_page.property_data_extractor import PropertyDataExtractor
-from app.jobs.mitsui_crawl_page.property_data_extractor import PropertyDataExtractor
 
 
 class CustomExtractorFactory:

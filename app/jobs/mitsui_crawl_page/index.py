@@ -2,41 +2,37 @@ import requests
 from bs4 import BeautifulSoup
 
 from app.jobs.crawl_strcture.index import crawl_pages
+from app.core.config import settings
 from .custom_extractor_factory import setup_custom_extractor
-from . import constants as config
+from .constants import URL_MULTI, ITEM_SELECTOR, NUM_PAGES, ID_MONGO, COLLECTION_NAME
 
 async def crawl_multi():
-    url = config.url_multi
-    item_selector = config.item_selector
-    num_page = 74
-
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": settings.CRAWLER_USER_AGENT
     }
     urls = []
 
-    for page in range(1, num_page + 1):
+    for page in range(1, NUM_PAGES + 1):
         params = {"page": page}
-        resp = requests.get(url, params=params, headers=headers)
+        resp = requests.get(URL_MULTI, params=params, headers=headers)
         if resp.status_code != 200:
             print(f"❌ Lỗi tải trang {page}")
             continue
         
         soup = BeautifulSoup(resp.text, "html.parser")
-        items = soup.select(item_selector)
+        items = soup.select(ITEM_SELECTOR)
         
         print(f"Trang {page}: tìm thấy {len(items)} items")
 
         for item in items:
-            # Có thể lấy link cụ thể trong data-js-room-link
             link = item.get("data-js-room-link")
             urls.append(link)
             
         
     await crawl_pages(
         urls, 
-        batch_size=config.batch_size, 
-        id_mongo=config.ID_MONGO, 
-        collection_name=config.COLLECTION_NAME,
-        custom_extractor_factory=setup_custom_extractor  # Pass the factory function
+        batch_size=settings.BATCH_SIZE, 
+        id_mongo=ID_MONGO, 
+        collection_name=COLLECTION_NAME,
+        custom_extractor_factory=setup_custom_extractor
     )

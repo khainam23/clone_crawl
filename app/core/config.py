@@ -7,22 +7,37 @@ from pydantic_settings import BaseSettings
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 
 class Settings(BaseSettings):
-    # Database settings
-    mongodb_url: str = "mongodb://localhost:27017"
-    database_name: str = "arealty_crawler"
-    
-    # API settings
-    api_host: str = "0.0.0.0"
-    api_port: int = 8000
-    debug: bool = False
-    
-    # Scheduler settings
-    scheduler_timezone: str = "UTC"
-    
-    # Crawler settings
-    crawler_user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    crawler_delay: float = 1.0
-    batch_size: int = 10
+    # DATABASE SETTINGS
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    DATABASE_NAME: str = "arealty_crawler"
+        
+    # API SETTINGS
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
+    DEBUG: bool = False
+        
+    # SCHEDULER SETTINGS
+    SCHEDULER_TIMEZONE: str = "UTC"
+        
+    # CRAWLER SETTINGS
+    CRAWLER_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    CRAWLER_DELAY: float = 1.0
+    BATCH_SIZE: int = 10
+        
+    # FOR IMAGE
+    MAX_IMAGES: int = 16
+    GALLERY_TIMEOUT: int = 10
+        
+    # FOR MONGO
+    ID_MONGO_MITSUI: int = 11000000
+    COLLECTION_NAME_MITSUI: str = 'room_mitsui'
+    ID_MONGO_TOKYU: int = 12000000
+    COLLECTION_NAME_TOKYU: str = 'room_tokyu'
+        
+    # STATION
+    STATION_URL: str = 'https://bmatehouse.com/api/routes/get_by_position'
+    MAX_STATIONS: int = 5
+
     
     class Config:
         env_file = ".env"

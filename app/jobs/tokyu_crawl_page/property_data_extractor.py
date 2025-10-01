@@ -9,8 +9,8 @@ from app.utils.construction_date_utils import extract_construction_year
 from app.utils.direction_utils import extract_direction_info
 from app.utils.available_date_utils import extract_available_from
 from app.utils.numeric_utils import extract_numeric_value, extract_months_multiplier, extract_area_size
-from app.utils.amenities_utils import process_amenities_text, apply_amenities_to_data
-from app.jobs.tokyu_crawl_page.constants import DEFAULT_AMENITIES, AMENITIES_MAPPING
+from app.utils.amenities_utils import apply_amenities_to_data
+from app.jobs.tokyu_crawl_page.constants import DEFAULT_AMENITIES
 from app.services.station_service import StationService
 from app.utils.building_type_utils import extract_building_type
 
@@ -307,19 +307,9 @@ class PropertyDataExtractor:
             
             print(f"🏢 Found amenities text: {amenities_text[:200]}...")
             
-            # Xử lý amenities bằng utils
-            found_amenities = process_amenities_text(amenities_text, AMENITIES_MAPPING)
+            # Áp dụng amenities vào data
+            apply_amenities_to_data(amenities_text, data)
             
-            if found_amenities:
-                # Áp dụng amenities vào data
-                apply_amenities_to_data(data, found_amenities)
-                
-                print(f"🏢 Set {len(found_amenities)} amenities to Y:")
-                for amenity in found_amenities:
-                    print(f"   {amenity['japanese']} → {amenity['field']}")
-            else:
-                print(f"⚠️ No recognizable amenities found in text")
-                
         except Exception as e:
             print(f"❌ Error extracting amenities: {e}")
         

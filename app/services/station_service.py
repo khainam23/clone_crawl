@@ -5,7 +5,7 @@ import requests
 from typing import Dict, Any, List
 
 from app.utils.http_client_utils import http_client
-from app.jobs.mitsui_crawl_page.constants import STATION_API_BASE_URL, MAX_STATIONS, GALLERY_TIMEOUT
+from app.core.config import settings
 
 
 class StationService:
@@ -19,11 +19,11 @@ class StationService:
         
         try:
             # Construct API URL using constant
-            api_url = f"{STATION_API_BASE_URL}?lng={lng}&lat={lat}"
+            api_url = f"{settings.STATION_URL}?lng={lng}&lat={lat}"
             print(f"🚉 Fetching stations: {api_url}")
             
             # Use the existing session for consistency
-            response = http_client.get(api_url, timeout=GALLERY_TIMEOUT)
+            response = http_client.get(api_url, timeout=settings.GALLERY_TIMEOUT)
             
             if response.status_code != 200:
                 print(f"❌ Station API failed: HTTP {response.status_code}")
@@ -37,7 +37,7 @@ class StationService:
             
             # Process stations using MAX_STATIONS constant
             stations_list = []
-            for station_info in stations_data[:MAX_STATIONS]:  # Limit using constant
+            for station_info in stations_data[:settings.MAX_STATIONS]:  # Limit using constant
                 station_name = station_info.get('name')
                 lines_info = station_info.get('lines_info', [])
                 

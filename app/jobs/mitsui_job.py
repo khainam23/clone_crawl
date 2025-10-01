@@ -26,7 +26,7 @@ async def crawl_mitsui():
 crawl_mitsui_job_config = {
     'func': crawl_mitsui,
     'trigger': 'cron',
-    'seconds': 8,
+    'hours': 8,
     'id': 'crawl_mitsui_job',
     'replace_existing': True
 }

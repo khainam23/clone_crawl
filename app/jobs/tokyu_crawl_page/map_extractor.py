@@ -2,8 +2,9 @@ from typing import Dict, Any
 
 from app.utils.html_processor_utils import htmlProcessor
 from app.utils.http_client_utils import http_client
-from app.jobs.tokyu_crawl_page.constants import BASE_URL, GALLERY_TIMEOUT
+from app.jobs.tokyu_crawl_page.constants import BASE_URL
 from app.utils.location_utils import get_district_info
+from app.core.config import settings
 
 class MapExtractor:
     def __init__(self):
@@ -70,7 +71,7 @@ class MapExtractor:
             print(f"🔗 Found access link: {access_link}")
             
             print(f"🗺️ Fetching access page: {access_link}")
-            response = http_client.get(access_link, timeout=GALLERY_TIMEOUT)
+            response = http_client.get(access_link, timeout=settings.GALLERY_TIMEOUT)
             
             if response.status_code != 200:
                 print(f"❌ Access page fetch failed: HTTP {response.status_code}")

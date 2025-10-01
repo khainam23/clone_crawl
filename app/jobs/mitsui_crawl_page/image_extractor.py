@@ -6,8 +6,7 @@ from typing import Dict, Any, Tuple, List
 
 from app.utils.html_processor_utils import HtmlProcessor
 from app.utils.http_client_utils import http_client
-from app.jobs.mitsui_crawl_page.constants import GALLERY_TIMEOUT
-from app.jobs.mitsui_crawl_page.constants import MAX_IMAGES
+from app.core.config import settings
 
 
 class ImageExtractor:
@@ -34,7 +33,7 @@ class ImageExtractor:
         
         try:
             print(f"🖼️ Fetching gallery: {gallery_url}")
-            response = http_client.get(gallery_url, timeout=GALLERY_TIMEOUT)
+            response = http_client.get(gallery_url, timeout=settings.GALLERY_TIMEOUT)
             
             if response.status_code != 200:
                 print(f"❌ Gallery fetch failed: HTTP {response.status_code}")
@@ -67,7 +66,7 @@ class ImageExtractor:
 
         def add_image(img_url: str, category: str) -> bool:
             """Add image if not duplicate and under limit"""
-            if (len(images_list) >= MAX_IMAGES or 
+            if (len(images_list) >= settings.MAX_IMAGES or 
                 img_url in used_urls or 
                 img_url.split('/')[-1] in used_names):
                 return False

@@ -5,7 +5,8 @@ from typing import Dict, Any
 
 from app.utils.html_processor_utils import htmlProcessor
 from app.utils.http_client_utils import http_client
-from app.jobs.tokyu_crawl_page.constants import BASE_URL, GALLERY_TIMEOUT
+from app.jobs.tokyu_crawl_page.constants import BASE_URL
+from app.core.config import settings
 
 
 class ImageExtractor:
@@ -33,7 +34,7 @@ class ImageExtractor:
             print(f"🔗 Found gallery link: {gallery_link}")
             
             print(f"🖼️ Fetching gallery: {gallery_link}")
-            response = http_client.get(gallery_link, timeout=GALLERY_TIMEOUT)
+            response = http_client.get(gallery_link, timeout=settings.GALLERY_TIMEOUT)
             
             if response.status_code != 200:
                 print(f"❌ Gallery fetch failed: HTTP {response.status_code}")

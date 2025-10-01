@@ -1,7 +1,7 @@
 """
 Direction processing utilities
 """
-from typing import Dict, Any
+from typing import Dict
 
 # Direction mapping
 DIRECTION_MAPPING = {

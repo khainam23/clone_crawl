@@ -1,11 +1,9 @@
 """
 MongoDB connection
 """
-from threading import Thread
 import logging
-from typing import Any, Dict, Optional
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import MongoClient, ASCENDING
+from pymongo import MongoClient
 
 from app.core.config import settings
 
@@ -20,8 +18,8 @@ mongodb = MongoDB()
 async def connect_to_mongo():
     """Create database connection"""
     try:
-        mongodb.client = AsyncIOMotorClient(settings.mongodb_url)
-        mongodb.database = mongodb.client[settings.database_name]
+        mongodb.client = AsyncIOMotorClient(settings.MONGODB_URL)
+        mongodb.database = mongodb.client[settings.DATABASE_NAME]
         
         # Test connection
         await mongodb.client.admin.command('ping')
@@ -57,4 +55,4 @@ class MongoDBSync:
     def get_collection(self, name: str):
         return self.database[name]
 
-mongodb_sync = MongoDBSync(settings.mongodb_url, settings.database_name)
+mongodb_sync = MongoDBSync(settings.MONGODB_URL, settings.DATABASE_NAME)

@@ -29,12 +29,17 @@ class PropertyExtractor:
         else:
             self.custom_extractor = CustomExtractor()  # Basic extractor
     
-    async def extract_property_data(self, url: str) -> Dict[str, Any]:
+    async def extract_property_data(self, url: str, crawler: Optional[AsyncWebCrawler] = None) -> Dict[str, Any]:
         """
         Extract dữ liệu bất động sản từ URL với đầy đủ thông tin theo PropertyModel
+        
+        Args:
+            url: URL to crawl
+            crawler: Optional AsyncWebCrawler instance from pool. If None, will create new instance
         """
         try:
-            async with AsyncWebCrawler(config=self.config.BROWSER_CONFIG) as crawler:
+            # Nếu có crawler từ pool, sử dụng nó; nếu không, tạo mới
+            if crawler:
                 result = await crawler.arun(
                     url=url,
                     config=self.config.RUN_CONFIG
@@ -59,6 +64,33 @@ class PropertyExtractor:
                     return PropertyUtils.create_crawl_result(
                         error=error_msg
                     )
+            else:
+                # Fallback: tạo crawler mới nếu không có từ pool
+                async with AsyncWebCrawler(config=self.config.BROWSER_CONFIG) as new_crawler:
+                    result = await new_crawler.arun(
+                        url=url,
+                        config=self.config.RUN_CONFIG
+                    )
+                    
+                    if result.success:
+                        # Extract comprehensive property data
+                        extracted_data = self._extract_comprehensive_data(url, result)
+                        
+                        # Validate data before creating result
+                        validated_data = ValidationUtils.validate_property_data(extracted_data)
+                        
+                        # Log success message
+                        PropertyUtils.log_crawl_success(url, validated_data)
+                        
+                        return PropertyUtils.create_crawl_result(
+                            property_data=validated_data,
+                        )
+                    else:
+                        error_msg = result.error_message or 'Failed to extract content'
+                        PropertyUtils.log_crawl_error(url, error_msg)
+                        return PropertyUtils.create_crawl_result(
+                            error=error_msg
+                        )
                     
         except Exception as e:
             error_msg = str(e)

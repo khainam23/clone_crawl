@@ -2,7 +2,6 @@
 Structure processing utilities
 """
 import difflib
-import re
 
 from app.utils.html_processor_utils import HtmlProcessor
 
