@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     CRAWLER_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     CRAWLER_DELAY: float = 1.0
     BATCH_SIZE: int = 10
-    USE_GPU: bool = False
+    USE_GPU: bool = True
         
     # FOR IMAGE
     MAX_IMAGES: int = 16
