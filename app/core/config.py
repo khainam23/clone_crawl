@@ -87,6 +87,8 @@ class CrawlerConfig:
             extra_args=extra_args,
         )
     
+    BROWSER_CONFIG = get_browser_config()
+
     # Crawler run configuration
     RUN_CONFIG = CrawlerRunConfig(
         wait_for_images=False,
