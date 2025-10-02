@@ -40,6 +40,7 @@ class StationService:
             for station_info in stations_data[:settings.MAX_STATIONS]:  # Limit using constant
                 station_name = station_info.get('name')
                 lines_info = station_info.get('lines_info', [])
+                walk_time = round(float(station_info.get('distance', 0)) * 12.5)
                 
                 if not station_name or not lines_info:
                     continue
@@ -50,7 +51,8 @@ class StationService:
                 if train_line_name:
                     stations_list.append({
                         'station_name': station_name,
-                        'train_line_name': train_line_name
+                        'train_line_name': train_line_name,
+                        'walk_time': walk_time
                     })
             
             if stations_list:
@@ -77,3 +79,6 @@ class StationService:
             data['stations'] = stations
         
         return data
+    
+    
+Station_Service = StationService()

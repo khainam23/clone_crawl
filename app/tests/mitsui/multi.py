@@ -6,6 +6,8 @@ import asyncio
 from app.jobs.mitsui_crawl_page.index import crawl_multi
 from app.db.mongodb import connect_to_mongo, close_mongo_connection
 from app.utils import city_utils, prefecture_utils
+from app.utils.save_utils import SaveUtils
+from app.core.config import settings
 
 async def main():
     """Main function with MongoDB connection setup"""
@@ -17,6 +19,8 @@ async def main():
         
         await city_utils.init()
         await prefecture_utils.init()
+        
+        await SaveUtils.clean_db(settings.COLLECTION_NAME_MITSUI, auto_backup=True)
         
         # Run the multi-page crawl with Mitsui
         print("🚀 Starting Mitsui multi-page crawl...")

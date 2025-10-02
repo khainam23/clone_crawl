@@ -74,6 +74,8 @@ class EnhancedPropertyCrawler:
                             property_dict[f'station_name_{station_num}'] = station['station_name']
                         if 'train_line_name' in station:
                             property_dict[f'train_line_name_{station_num}'] = station['train_line_name']
+                        if 'walk_time' in station:
+                            property_dict[f'walk_time_{station_num}'] = station['walk_time']
             
             result['property_data'] = property_dict
             

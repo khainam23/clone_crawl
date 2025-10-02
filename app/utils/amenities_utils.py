@@ -4,23 +4,6 @@ Amenities processing utilities
 from typing import Dict, Any, List
 import difflib
 
-# Default amenities for Tokyu
-DEFAULT_TOKYU_AMENITIES = {
-    'credit_card': 'Y',
-    'aircon': 'Y',
-    'aircon_heater': 'Y',
-    'bs': 'Y',
-    'cable': 'Y',
-    'internet_broadband': 'Y',
-    'phoneline': 'Y',
-    'flooring': 'Y',
-    'system_kitchen': 'Y',
-    'bath': 'Y',
-    'shower': 'Y',
-    'unit_bath': 'Y',
-    'western_toilet': 'Y',
-}
-
 AMENITIES_MAPPING = {
     '宅配BOX': 'delivery_box',
     '宅配ボックス': 'delivery_box',
@@ -99,15 +82,6 @@ AMENITIES_MAPPING = {
     'Wi-Fi': 'internet_wifi',
     'インターホン': 'autolock',
 }
-
-def get_default_amenities() -> Dict[str, Any]:
-    """
-    Get default amenities configuration
-    
-    Returns:
-        Dictionary with default amenities
-    """
-    return DEFAULT_TOKYU_AMENITIES.copy()
 
 def process_amenities_text(amenities_text: str) -> List[Dict[str, str]]:
     """

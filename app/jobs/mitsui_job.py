@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 async def crawl_mitsui():
     try:
         # Làm rỗng trước khi run
-        await SaveUtils.clean_db(constants.COLLECTION_NAME)
+        await SaveUtils.clean_db(constants.COLLECTION_NAME, auto_backup=True)
         
         await crawl_multi()
         # await crawl_pages(["https://www.mitsui-chintai.co.jp/rf/tatemono/4281/211"])

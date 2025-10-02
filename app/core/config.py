@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     CRAWLER_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     CRAWLER_DELAY: float = 1.0
     BATCH_SIZE: int = 10
+    USE_GPU: bool = False
         
     # FOR IMAGE
     MAX_IMAGES: int = 16
@@ -43,19 +44,48 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"  # Ignore extra fields not defined in the model
+  
+# Global settings instance
+settings = Settings()
         
 class CrawlerConfig:
     """Cấu hình cho crawler"""
     
-    # Browser configuration
-    BROWSER_CONFIG = BrowserConfig(
-        headless=True,
-        headers={
-            "Accept-Encoding": "gzip, deflate",
-            "Cache-Control": "no-cache",
-        },
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    )
+    @staticmethod
+    def get_browser_config(use_gpu: bool = None) -> BrowserConfig:
+        """
+        Trả về browser config dựa theo GPU setting
+        
+        Args:
+            use_gpu: True/False để bật/tắt GPU. Nếu None thì lấy từ settings.USE_GPU
+        """
+        # Nếu không truyền vào thì lấy từ settings
+        if use_gpu is None:
+            use_gpu = settings.USE_GPU
+            
+        if use_gpu:
+            extra_args = [
+                "--enable-gpu",
+                "--use-gl=desktop",
+                "--enable-accelerated-2d-canvas",
+                "--enable-webgl",
+                "--ignore-gpu-blocklist",
+            ]
+        else:
+            extra_args = [
+                "--disable-gpu",
+                "--disable-software-rasterizer",
+            ]
+
+        return BrowserConfig(
+            headless=True,
+            headers={
+                "Accept-Encoding": "gzip, deflate",
+                "Cache-Control": "no-cache",
+            },
+            user_agent=settings.CRAWLER_USER_AGENT,
+            extra_args=extra_args,
+        )
     
     # Crawler run configuration
     RUN_CONFIG = CrawlerRunConfig(
@@ -65,9 +95,3 @@ class CrawlerConfig:
         page_timeout=25000,
         remove_overlay_elements=True
     )
-    
-    # Valid image extensions
-    VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
-        
-# Global settings instance
-settings = Settings()

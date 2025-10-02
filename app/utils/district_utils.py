@@ -1,5 +1,7 @@
 """
 District utilities for geospatial queries
+
+Thực hiện tính toán bằng chuyển đội tọa độ không gian
 """
 from typing import List, Optional
 from app.db.mongodb import mongodb_sync

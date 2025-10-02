@@ -46,4 +46,51 @@ class HtmlProcessor:
         
         return html
     
+    @classmethod
+    def extract_dt_dd_content(cls, html: str, dt_label: str) -> Optional[str]:
+        """
+        Extract content from <dt>label</dt><dd>content</dd> pattern
+        
+        Args:
+            html: HTML string to search in
+            dt_label: Label text to find in <dt> tag
+            
+        Returns:
+            Cleaned content from <dd> tag or None if not found
+        """
+        pattern = rf'<dt[^>]*>{dt_label}</dt>\s*<dd[^>]*>(.*?)</dd>'
+        content = cls.find(pattern, html)
+        return cls.clean_html(content) if content else None
+    
+    @classmethod
+    def find_dt_dd(cls, html: str, dt_label: str) -> Optional[str]:
+        """
+        Find and clean content from <dt>label</dt><dd>content</dd> pattern
+        Alternative method with different pattern matching
+        
+        Args:
+            html: HTML string to search in
+            dt_label: Label text to find in <dt> tag
+            
+        Returns:
+            Cleaned content from <dd> tag or None if not found
+        """
+        content = cls.find(rf'{dt_label}.*?<dd[^>]*>(.*?)</dd>', html)
+        return cls.clean_html(content).strip() if content else None
+    
+    @classmethod
+    def find_td(cls, html: str, th_label: str) -> Optional[str]:
+        """
+        Find and clean content from table <th>label</th>...<td>content</td> pattern
+        
+        Args:
+            html: HTML string to search in
+            th_label: Label text to find in <th> tag
+            
+        Returns:
+            Cleaned content from <td> tag or None if not found
+        """
+        content = cls.find(rf'{th_label}.*?<td[^>]*>(.*?)</td>', html)
+        return cls.clean_html(content).strip() if content else None
+    
 htmlProcessor = HtmlProcessor()

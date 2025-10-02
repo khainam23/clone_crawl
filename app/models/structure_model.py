@@ -8,7 +8,7 @@ class StationInfo(BaseModel):
     """
     station_name: Optional[str] = Field(None, description="Tên ga tàu")
     train_line_name: Optional[str] = Field(None, description="Tên tuyến tàu")
-    walk_time: Optional[int] = Field(None, description="Thời gian đi bộ đến ga (phút)") # Luôn lấy nhân với 12.5 và làm tròn nguyên có lên xuống
+    walk_time: Optional[int] = Field(None, description="Thời gian đi bộ đến ga (phút)") # Luôn lấy nhân với 12.5 và làm tròn gần nhất
     bus_time: Optional[int] = Field(None, description="Thời gian đi xe buýt đến ga (phút)")
     car_time: Optional[int] = Field(None, description="Thời gian đi ô tô đến ga (phút)")
     cycle_time: Optional[int] = Field(None, description="Thời gian đi xe đạp đến ga (phút)")

@@ -8,11 +8,12 @@ from app.core.config import settings
 # URL and selector configurations
 URL_MULTI: Final = 'https://www.mitsui-chintai.co.jp/rf/result?'  # Trang chứa các thẻ có phân trang của mitsui
 ITEM_SELECTOR: Final = 'tr.c-room-list__body-row[data-js-room-link]'  # Thẻ phần tử
+ITEM_MAX_NUM_PAGE: Final = 'li.c-pagination__item > a.c-pagination__link[href]'
 
 # Database configuration
 ID_MONGO = settings.ID_MONGO_MITSUI
 COLLECTION_NAME = settings.COLLECTION_NAME_MITSUI
-NUM_PAGES = 1
+DEFAULT_NUM_PAGES = 74 #74
 
 # Coordinate conversion constants
 COORDINATE_OFFSET_LAT: Final = -1.291213

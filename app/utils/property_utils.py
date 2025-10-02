@@ -75,3 +75,75 @@ class PropertyUtils:
     def print_crawl_error(url: str, error: str):
         """Backward compatibility - use log_crawl_error instead"""
         PropertyUtils.log_crawl_error(url, error)
+    
+    @staticmethod
+    def set_default_amenities(data: Dict[str, Any], default_amenities: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Set default amenities using provided constants
+        
+        Args:
+            data: Property data dictionary
+            default_amenities: Dictionary of default amenity values
+            
+        Returns:
+            Updated data dictionary
+        """
+        data.update(default_amenities)
+        return data
+    
+    @staticmethod
+    def process_pricing(data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Process pricing calculations with validation
+        Calculates total_monthly, numeric_guarantor, and numeric_guarantor_max
+        
+        Args:
+            data: Property data dictionary containing monthly_rent and monthly_maintenance
+            
+        Returns:
+            Updated data dictionary with calculated pricing fields
+        """
+        if not all(key in data for key in ['monthly_rent', 'monthly_maintenance']):
+            return data
+
+        try:
+            monthly_rent = data['monthly_rent']
+            monthly_maintenance = data['monthly_maintenance']
+            total_monthly = monthly_rent + monthly_maintenance
+
+            if total_monthly > 0:
+                data.update({
+                    "total_monthly": total_monthly,
+                    "numeric_guarantor": total_monthly * 50 // 100,
+                    "numeric_guarantor_max": total_monthly * 80 // 100,
+                })
+                
+                logger.debug(f"Calculated pricing: total={total_monthly}円")
+            else:
+                logger.warning(f"Invalid total monthly amount: {total_monthly}")
+
+        except Exception as e:
+            logger.error(f"Error processing pricing: {e}")
+
+        return data
+    
+    @staticmethod
+    def cleanup_temp_fields(data: Dict[str, Any], *field_names: str) -> Dict[str, Any]:
+        """
+        Remove temporary fields that shouldn't be in final JSON
+        
+        Args:
+            data: Property data dictionary
+            *field_names: Variable number of field names to remove (default: '_html')
+            
+        Returns:
+            Updated data dictionary with temporary fields removed
+        """
+        fields_to_remove = field_names if field_names else ('_html',)
+        
+        for field in fields_to_remove:
+            if field in data:
+                del data[field]
+                logger.debug(f"Cleaned up temporary field: {field}")
+        
+        return data
