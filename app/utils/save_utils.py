@@ -1,8 +1,9 @@
 """
 File operation utility functions
 """
-import logging, time, json, os
+import logging, time
 from typing import List, Dict, Any, Optional
+import logging, time, json, os
 
 from app.db.mongodb import get_collection
 
@@ -13,29 +14,7 @@ class SaveUtils:
     """Utility functions cho file operations"""
     
     @staticmethod
-    def _ensure_directory(directory: str) -> None:
-        """Đảm bảo thư mục tồn tại, tạo nếu cần thiết"""
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-    
-    @staticmethod
-    def _prepare_documents(results: List[Dict[str, Any]], start_id: int = 0) -> List[Dict[str, Any]]:
-        """Chuẩn bị documents với ID và timestamp"""
-        documents = []
-        current_time = time.time()
-        
-        for i, result in enumerate(results):
-            document = {
-                **result,
-                "created_at": current_time,
-                "_id": start_id + i + 1
-            }
-            documents.append(document)
-        
-        return documents
-    
-    @staticmethod
-    async def backup_db(collection_name: str = "crawl_results") -> Optional[str]:
+    async def backup_db(collection_name: Optional[str] = "crawl_results") -> Optional[str]:
         """Backup MongoDB collection ra file JSON trước khi thực hiện thao tác"""
         try:
             collection = get_collection(collection_name)
@@ -54,7 +33,8 @@ class SaveUtils:
             
             # Tạo thư mục backup nếu chưa tồn tại
             backup_dir = "data/backups"
-            SaveUtils._ensure_directory(backup_dir)
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
             
             # Tạo tên file backup với timestamp
             timestamp = int(time.time())
@@ -75,7 +55,7 @@ class SaveUtils:
             return None
     
     @staticmethod
-    async def clean_db(collection_name: str = "crawl_results", auto_backup: bool = True) -> Optional[int]:
+    async def clean_db(collection_name: Optional[str] = "crawl_results", auto_backup: bool = True):
         """Làm rỗng database theo collection_name"""
         try:
             # Tự động backup trước khi xóa (nếu auto_backup=True)
@@ -101,28 +81,34 @@ class SaveUtils:
             return None
     
     @staticmethod
-    async def save_db_results(
-        results: List[Dict[str, Any]], 
-        collection_name: str = "crawl_results", 
-        _id: int = 0
-    ) -> Optional[str]:
+    async def save_db_results(results: List[Dict[str, Any]], collection_name: Optional[str] = "crawl_results", _id: Optional[int] = 0) -> Optional[str]:
         """Lưu kết quả vào MongoDB"""        
         try:
-            if not results:
+            collection = get_collection(collection_name)
+        
+            # Chuẩn bị documents để insert
+            documents = []
+            for i, result in enumerate(results):
+                document = {
+                    **result,
+                    "created_at": time.time(),
+                    "_id": _id + i + 1
+                }
+                
+                documents.append(document)
+            
+            # Insert vào MongoDB
+            if documents:
+                insert_result = await collection.insert_many(documents)
+                inserted_count = len(insert_result.inserted_ids)
+                
+                logger.info(f"Saved {inserted_count} results to MongoDB collection: {collection_name}")
+                print(f"💾 Saved {inserted_count} results to MongoDB collection: {collection_name}")
+                return f"{collection_name}"
+            else:
                 logger.warning("No results to save")
                 print("⚠️ No results to save")
                 return None
-                
-            collection = get_collection(collection_name)
-            documents = SaveUtils._prepare_documents(results, _id)
-            
-            # Insert vào MongoDB
-            insert_result = await collection.insert_many(documents)
-            inserted_count = len(insert_result.inserted_ids)
-            
-            logger.info(f"Saved {inserted_count} results to MongoDB collection: {collection_name}")
-            print(f"💾 Saved {inserted_count} results to MongoDB collection: {collection_name}")
-            return collection_name
             
         except Exception as e:
             logger.error(f"Error saving to MongoDB collection {collection_name}: {e}")
@@ -130,37 +116,43 @@ class SaveUtils:
             return None
         
     @staticmethod
-    async def save_json_results(
-        results: List[Dict[str, Any]], 
-        collection_name: str = "crawl_results", 
-        _id: int = 0
-    ) -> Optional[str]:
-        """Lưu kết quả vào file JSON"""
+    async def save_json_results(results: List[Dict[str, Any]], collection_name: Optional[str] = "crawl_results", _id: Optional[int] = 0) -> Optional[str]:
         try:
-            if not results:
-                logger.warning("No results to save")
-                print("⚠️ No results to save")
-                return None
-                
             # Tạo thư mục data nếu chưa tồn tại
             data_dir = "data"
-            SaveUtils._ensure_directory(data_dir)
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
             
             # Tạo tên file dựa trên collection_name và timestamp
             timestamp = int(time.time())
             filename = f"{data_dir}/{collection_name}_{timestamp}.json"
             
-            # Chuẩn bị documents và lưu vào file JSON
-            documents = SaveUtils._prepare_documents(results, _id)
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(documents, f, ensure_ascii=False, indent=2, default=str)
+            # Chuẩn bị documents để lưu
+            documents = []
+            for i, result in enumerate(results):
+                document = {
+                    **result,
+                    "created_at": time.time(),
+                    "_id": _id + i + 1
+                }
+                documents.append(document)
             
-            saved_count = len(documents)
-            logger.info(f"Saved {saved_count} results to JSON file: {filename}")
-            print(f"💾 Saved {saved_count} results to JSON file: {filename}")
-            return filename
+            # Lưu vào file JSON
+            if documents:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump(documents, f, ensure_ascii=False, indent=2)
+                
+                saved_count = len(documents)
+                logger.info(f"Saved {saved_count} results to JSON file: {filename}")
+                print(f"💾 Saved {saved_count} results to JSON file: {filename}")
+                return filename
+            else:
+                logger.warning("No results to save")
+                print("⚠️ No results to save")
+                return None
                 
         except Exception as e:
             logger.error(f"Error saving to JSON file: {e}")
             print(f"❌ Error saving to JSON file: {e}")
             return None
+        
