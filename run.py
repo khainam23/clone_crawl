@@ -2,8 +2,14 @@
 Gunicorn/Uvicorn entrypoint
 """
 import sys
+import asyncio
+import platform
 from pathlib import Path
 import uvicorn
+
+# Fix for Windows ProactorEventLoop issue
+if platform.system() == 'Windows':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
@@ -13,10 +19,14 @@ sys.path.insert(0, str(project_root))
 from app.main import app
 from app.core.config import settings
 from app.db.mongodb import connect_to_mongo, close_mongo_connection
+from app.utils import city_utils, prefecture_utils, district_utils
 
 async def startup():
     """Application startup"""
     await connect_to_mongo()
+    await city_utils.init()
+    await prefecture_utils.init()
+    district_utils.ensure_district_index()
 
 async def shutdown():
     """Application shutdown"""
@@ -31,8 +41,8 @@ if __name__ == "__main__":
     # Run with uvicorn
     uvicorn.run(
         "run:app",
-        host=settings.api_host,
-        port=settings.api_port,
-        reload=settings.debug,
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=settings.DEBUG,
         log_level="info"
     )
