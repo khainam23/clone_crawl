@@ -1,0 +1,171 @@
+@startuml Crawler Job Sequence
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+title Chi Tiết Luồng Xử Lý Crawler Job (Mitsui)
+
+actor "APScheduler" as scheduler
+participant "Job\n(mitsui_job)" as job
+participant "SaveUtils" as save_utils
+participant "crawl_multi()" as crawl_multi
+participant "BeautifulSoup" as bs4
+participant "Website\n(Mitsui)" as website
+participant "crawl_pages()" as crawl_pages
+participant "EnhancedPropertyCrawler" as crawler
+participant "CustomExtractor\nFactory" as factory
+participant "CustomExtractor" as extractor
+participant "Utils\n(Property/Location/etc)" as utils
+participant "MongoDB" as mongodb
+
+== Khởi động Job ==
+scheduler -> job: Trigger job theo lịch
+activate job
+
+job -> save_utils: clean_db(collection_name)
+activate save_utils
+save_utils -> mongodb: Delete all documents\nin collection
+activate mongodb
+mongodb --> save_utils: OK
+deactivate mongodb
+save_utils --> job: Collection cleaned
+deactivate save_utils
+
+== Thu thập danh sách URLs ==
+job -> crawl_multi: Execute crawl_multi()
+activate crawl_multi
+
+loop Mỗi trang (pagination)
+  crawl_multi -> website: GET request\n(page={page_num})
+  activate website
+  website --> crawl_multi: HTML response
+  deactivate website
+  
+  crawl_multi -> bs4: Parse HTML
+  activate bs4
+  bs4 --> crawl_multi: Parsed DOM
+  deactivate bs4
+  
+  crawl_multi -> crawl_multi: Select items\n(item_selector)
+  crawl_multi -> crawl_multi: Extract URLs\n(data-js-room-link)
+  
+  note right
+    Lưu URLs vào list
+  end note
+end
+
+== Crawl chi tiết từng property ==
+crawl_multi -> crawl_pages: crawl_pages(\n  urls,\n  batch_size,\n  collection_name,\n  custom_extractor_factory\n)
+activate crawl_pages
+
+crawl_pages -> crawler: Initialize\nEnhancedPropertyCrawler(\n  custom_extractor_factory\n)
+activate crawler
+
+crawler -> factory: Call factory function
+activate factory
+factory -> extractor: Create CustomExtractor\ninstance
+activate extractor
+extractor --> factory: Extractor instance
+deactivate extractor
+factory --> crawler: Extractor ready
+deactivate factory
+
+== Xử lý từng batch URLs ==
+loop Mỗi batch (batch_size URLs)
+  
+  par Parallel processing trong batch
+    loop Mỗi URL trong batch
+      crawler -> website: Fetch property page
+      activate website
+      website --> crawler: HTML content
+      deactivate website
+      
+      crawler -> extractor: Extract data from HTML
+      activate extractor
+      
+      == Trích xuất dữ liệu ==
+      extractor -> utils: Extract property info
+      activate utils
+      utils --> extractor: Property data
+      deactivate utils
+      
+      extractor -> utils: Extract location
+      activate utils
+      utils --> extractor: Location data
+      deactivate utils
+      
+      extractor -> utils: Extract images
+      activate utils
+      utils --> extractor: Image URLs
+      deactivate utils
+      
+      extractor -> utils: Extract coordinates
+      activate utils
+      utils --> extractor: Lat/Lng
+      deactivate utils
+      
+      extractor -> utils: Extract amenities
+      activate utils
+      utils --> extractor: Amenities list
+      deactivate utils
+      
+      extractor -> utils: Validate data
+      activate utils
+      utils --> extractor: Validated data
+      deactivate utils
+      
+      extractor --> crawler: Complete property data
+      deactivate extractor
+      
+      note right
+        Dữ liệu đã được:
+        - Trích xuất
+        - Validate
+        - Transform
+      end note
+    end
+  end
+  
+  crawler -> crawler: Collect batch results
+end
+
+crawler --> crawl_pages: All results
+deactivate crawler
+
+== Lưu kết quả ==
+crawl_pages -> save_utils: save_db_results(\n  results,\n  _id,\n  collection_name\n)
+activate save_utils
+
+save_utils -> save_utils: Prepare document
+save_utils -> mongodb: Insert/Update document
+activate mongodb
+mongodb --> save_utils: Document saved
+deactivate mongodb
+
+save_utils --> crawl_pages: Success
+deactivate save_utils
+
+crawl_pages --> crawl_multi: Crawl completed
+deactivate crawl_pages
+
+crawl_multi --> job: Success response
+deactivate crawl_multi
+
+== Kết thúc Job ==
+job -> job: Log result\n(success/error)
+job --> scheduler: Job completed
+deactivate job
+
+note over scheduler, mongodb
+  **Thời gian xử lý:**
+  - Thu thập URLs: ~1-5 giây
+  - Crawl chi tiết: ~10-60 giây (tùy số lượng)
+  - Lưu database: ~1-2 giây
+  
+  **Xử lý lỗi:**
+  - Try-catch ở mỗi level
+  - Log errors
+  - Continue với URLs còn lại
+end note
+
+@enduml
