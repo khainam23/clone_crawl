@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from app.routes.health import router as health_router
-from app.core.scheduler import start_scheduler
 
 app = FastAPI(
     title="Arealty Crawler API",
@@ -10,18 +9,6 @@ app = FastAPI(
 
 # Include routers
 app.include_router(health_router, prefix="/api/v1")
-
-@app.on_event("startup")
-async def startup_event():
-    """Start scheduler on application startup"""
-    start_scheduler()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on application shutdown"""
-    from app.core.scheduler import stop_scheduler
-    stop_scheduler()
-    pass
 
 if __name__ == "__main__":
     import uvicorn

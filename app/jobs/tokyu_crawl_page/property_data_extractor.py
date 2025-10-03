@@ -105,7 +105,7 @@ class PropertyDataExtractor:
             data['size'] = 0
         
         if direction_text := self._get_td('方位'):
-            data.update(extract_direction_info(direction_text))
+            data.update(extract_direction_info(data, direction_text))
         
         return data
     

@@ -27,7 +27,7 @@ async def main():
         # Run the crawl with Tokyu custom extractor
         await crawl_pages(
             urls=[
-                "https://rent.tokyu-housing-lease.co.jp/rent/8034099/111208",
+                "https://rent.tokyu-housing-lease.co.jp/rent/8034544/114051",
             ],
             batch_size=1,
             id_mongo=0,

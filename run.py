@@ -27,9 +27,15 @@ async def startup():
     await city_utils.init()
     await prefecture_utils.init()
     district_utils.ensure_district_index()
+    
+    # Start scheduler after MongoDB is connected
+    from app.core.scheduler import start_scheduler
+    await start_scheduler()
 
 async def shutdown():
     """Application shutdown"""
+    from app.core.scheduler import stop_scheduler
+    stop_scheduler()
     await close_mongo_connection()
 
 # Add startup and shutdown events

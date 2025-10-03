@@ -26,8 +26,7 @@ async def crawl_tokyu():
 crawl_tokyu_job_config = {
     'func': crawl_tokyu,
     'trigger': 'cron',
-    'hour': 9,
-    'minute': 10,
+    'hour': 8,
     'id': 'crawl_tokyu_job',
     'replace_existing': True
 }

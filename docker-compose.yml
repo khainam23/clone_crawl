@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb_compose
+    ports:
+      - "27017:27017"   # để host cũng có thể truy cập được
+    volumes:
+      - ./data/mongo:/data/db
+
+  crawler:
+    image: namkhai23/bmate-crawler:latest
+    container_name: crawler
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URL=mongodb://mongodb_compose:27017   # <-- kết nối bằng tên service
+    ports:
+      - "8000:8000"   # nếu crawler có expose web API

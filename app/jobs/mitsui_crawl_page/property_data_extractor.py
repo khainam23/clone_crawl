@@ -250,7 +250,8 @@ class PropertyDataExtractor:
     def extract_direction_info(self, data: Dict[str, Any], html: str):
         """Extract apartment facing direction"""
         if direction_text := self._extract_dt_dd_content(html, '方位'):
-            extract_direction_info(direction_text)
+            print(f"🧭 Direction: {direction_text}")
+            extract_direction_info(data, direction_text)
     
     def extract_lock_exchange(self, data: Dict[str, Any], html: str):
         """Extract lock exchange fee"""
