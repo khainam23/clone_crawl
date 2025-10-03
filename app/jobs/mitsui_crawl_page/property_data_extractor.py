@@ -1,19 +1,22 @@
 """Property data extraction utilities for Mitsui crawling"""
 import re
+import sys
+import asyncio
 import calendar
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, date
+from concurrent.futures import ThreadPoolExecutor
 
 from app.utils.html_processor_utils import HtmlProcessor
 from app.utils.direction_utils import extract_direction_info
 from app.utils.structure_utils import extract_structure_info as utils_extract_structure_info
 from app.utils.amenities_utils import apply_amenities_to_data
 from app.utils.property_utils import PropertyUtils
+from app.utils.coordinate_utils import fetch_coordinates_from_google_maps
 from app.services.station_service import Station_Service
 from app.jobs.mitsui_crawl_page.coordinate_converter import CoordinateConverter
 from app.jobs.mitsui_crawl_page.constants import DEFAULT_AMENITIES
 from app.utils.location_utils import get_district_info
-
 
 class PropertyDataExtractor:
     """Handles extraction of property data from HTML"""
@@ -23,14 +26,11 @@ class PropertyDataExtractor:
         self.coordinate_converter = CoordinateConverter()
         self.station_service = Station_Service
         self._dt_dd_cache = None
-        self._coordinates_cache = None
     
     def _parse_html_once(self, html: str) -> None:
-        """Parse HTML once and cache all dt/dd pairs and coordinates"""
+        """Parse HTML once and cache all dt/dd pairs"""
         if self._dt_dd_cache is None:
             self._dt_dd_cache = self.html_processor.parse_all_dt_dd(html)
-        if self._coordinates_cache is None:
-            self._parse_coordinates(html)
     
     def _get_dt_dd(self, dt_label: str) -> Optional[str]:
         """Get cached dt/dd content"""
@@ -39,26 +39,36 @@ class PropertyDataExtractor:
         content = self._dt_dd_cache.get(dt_label)
         return self.html_processor.clean_html(content) if content else None
     
-    def _parse_coordinates(self, html: str) -> None:
-        """Parse coordinates once and cache them"""
+    async def _parse_coordinates(self, address: str, data: Dict[str, Any]) -> None:
+        """Fetch coordinates from Google Maps and update data directly"""
+        if not address:
+            print("⚠️ No address provided for coordinate fetching")
+            return
+
         try:
-            pattern = self.html_processor.compile_regex(r'name="[^"]*MAP_([XY])"[^>]*value="([^"]*)"')
-            coords = {axis: value for axis, value in pattern.findall(html)}
+            print(f"🌐 Fetching coordinates from Google Maps for: {address}")
             
-            if 'X' in coords and 'Y' in coords:
-                x, y = float(coords['X']), float(coords['Y'])
-                lat, lon = self.coordinate_converter.xy_to_latlon_tokyo(x, y)
-                self._coordinates_cache = {
-                    'map_lat': float(lat),
-                    'map_lng': float(lon),
-                    'x': x,
-                    'y': y
-                }
+            # Run sync Selenium in thread pool to avoid event loop issues
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                result = await loop.run_in_executor(
+                    executor, 
+                    fetch_coordinates_from_google_maps, 
+                    address
+                )
+            
+            if result:
+                lat, lng = result
+                data.update({
+                    'map_lat': lat,
+                    'map_lng': lng
+                })
+                print(f"✅ Coordinates found: Lat={lat:.6f}, Lng={lng:.6f}")
             else:
-                self._coordinates_cache = {}
+                print(f"⚠️ No coordinates found for address: {address}")
+
         except Exception as e:
-            print(f"❌ Coordinate parsing error: {e}")
-            self._coordinates_cache = {}
+            print(f"❌ Error in coordinate fetching: {e}")
     
     def _extract_dt_dd_content(self, html: str, dt_label: str) -> Optional[str]:
         """Extract content from dt/dd pattern"""
@@ -72,15 +82,15 @@ class PropertyDataExtractor:
         except Exception as e:
             print(f"❌ Error in {func_name}: {e}")
     
-    def convert_coordinates(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
-        """Convert coordinates from XY to lat/lon"""
-        if self._coordinates_cache and 'map_lat' in self._coordinates_cache:
-            data.update({
-                'map_lat': self._coordinates_cache['map_lat'],
-                'map_lng': self._coordinates_cache['map_lng']
-            })
-            print(f"🗺️ Coordinates: X={self._coordinates_cache['x']}, Y={self._coordinates_cache['y']} → "
-                  f"Lat={self._coordinates_cache['map_lat']:.6f}, Lng={self._coordinates_cache['map_lng']:.6f}")
+    async def convert_coordinates(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
+        """Fetch coordinates from Google Maps using address from data"""
+        # Get address from data (already extracted by extract_address_info)
+        address = data.get('address')
+        
+        # Fetch coordinates and update data directly
+        if address:
+            await self._parse_coordinates(address, data)
+        
         return data
     
     def set_default_amenities(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
@@ -91,7 +101,6 @@ class PropertyDataExtractor:
     
     def cleanup_temp_fields(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
         self._dt_dd_cache = None
-        self._coordinates_cache = None
         return PropertyUtils.cleanup_temp_fields(data, '_html')
     
     def extract_header_info(self, data: Dict[str, Any], html: str):
@@ -253,6 +262,12 @@ class PropertyDataExtractor:
             print(f"🧭 Direction: {direction_text}")
             extract_direction_info(data, direction_text)
     
+    def extract_estimated_rent(self, data: Dict[str, Any], html: str):
+        """Extract めやす賃料 (estimated rent) as other_subscription_fees"""
+        if estimated_rent_text := self._extract_dt_dd_content(html, 'めやす賃料'):
+            if match := re.search(r'([\d,]+)円', estimated_rent_text):
+                data['total_monthly'] = int(match.group(1).replace(',', ''))
+    
     def extract_lock_exchange(self, data: Dict[str, Any], html: str):
         """Extract lock exchange fee"""
         if other_fees_text := self._extract_dt_dd_content(html, 'その他費用'):
@@ -280,6 +295,7 @@ class PropertyDataExtractor:
             ('parking', self.extract_parking),
             ('address_info', self.extract_address_info),
             ('rent_info', self.extract_rent_info),
+            ('estimated_rent', self.extract_estimated_rent),
             ('room_info', self.extract_room_info),
             ('construction_date', self.extract_construction_date),
             ('structure_info', self.extract_structure_info),

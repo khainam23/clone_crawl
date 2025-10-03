@@ -1,81 +1,73 @@
 # Jobs Module
 
-Module quản lý các job crawl dữ liệu bất động sản từ các trang web khác nhau.
+Module quản lý các job crawl dữ liệu bất động sản tự động theo lịch.
 
 ## Mục đích
 
-- Quản lý và đăng ký các job crawl tự động
-- Cung cấp cấu trúc chuẩn để tạo job crawl cho trang web mới
-- Hỗ trợ scheduler để chạy job theo lịch
+Cung cấp hệ thống đăng ký và quản lý job crawl cho các trang web bất động sản khác nhau.
 
-## Cấu trúc thư mục
+## Cấu trúc
 
 ```
 jobs/
 ├── index.py                    # Registry quản lý job
-├── __init__.py                # Import và đăng ký job
-├── print_job.py               # Job mẫu để test
-├── mitsui_job.py              # Job crawl Mitsui
-├── mitsui_crawl_page/         # Module crawl Mitsui
-├── tokyu_crawl_page/          # Module crawl Tokyu
-└── crawl_strcture/            # Cấu trúc base cho crawl
+├── __init__.py                 # Đăng ký tất cả job
+├── print_job.py                # Job test mẫu
+├── mitsui_job.py               # Job crawl Mitsui
+├── tokyu_job.py                # Job crawl Tokyu
+├── mitsui_crawl_page/          # Module crawl Mitsui
+├── tokyu_crawl_page/           # Module crawl Tokyu
+└── crawl_strcture/             # Base structure cho crawl
 ```
 
-## Cách sử dụng
+## Cách thêm job mới
 
-### 1. Tạo job crawl mới
+### Bước 1: Tạo file job
 
-Để tạo job cho trang web mới, làm theo các bước:
-
-1. **Tạo thư mục crawl**: `{tên_trang}_crawl_page/`
-2. **Tạo file job**: `{tên_trang}_job.py`
-3. **Đăng ký job** trong `__init__.py`
-
-### 2. Cấu trúc file job
+Tạo file `{tên_trang}_job.py`:
 
 ```python
-# example_job.py
 from app.jobs.index import job_registry
 
 async def crawl_example():
-    # Logic crawl ở đây
-    return {"status": "success", "message": "Crawl completed"}
-
-# Cấu hình job
-job_config = {
-    'func': crawl_example,
-    'trigger': 'cron',
-    'seconds': 60,
-    'id': 'crawl_example_job',
-    'replace_existing': True
-}
+    """Logic crawl của bạn"""
+    # TODO: Implement crawl logic
+    return {"status": "success"}
 
 # Đăng ký job
-job_registry.register(job_config)
+job_registry.register({
+    'func': crawl_example,
+    'trigger': 'cron',
+    'seconds': 60,                    # Chạy mỗi 60 giây
+    'id': 'crawl_example_job',
+    'replace_existing': True
+})
 ```
 
-### 3. Đăng ký job trong __init__.py
+### Bước 2: Import job trong `__init__.py`
 
 ```python
-# Thêm import job mới
-from . import example_job
+from . import example_job  # Thêm dòng này
 ```
 
-## Thứ tự crawl khuyến nghị
+### Bước 3: Tạo module crawl (tùy chọn)
 
-1. **Crawl ảnh trước** - Tải và xử lý hình ảnh
-2. **Thông tin cố định** - Dữ liệu không thay đổi (địa chỉ, diện tích)
-3. **Thông tin biến đổi** - Giá cả, trạng thái
-4. **Thông tin bổ sung** - Tiện ích, mô tả
+Nếu logic phức tạp, tạo folder `{tên_trang}_crawl_page/` để tổ chức code.
 
-## File quan trọng
+## Trigger options
 
-- **`index.py`**: Registry quản lý tất cả job
-- **`print_job.py`**: Job mẫu để test scheduler
-- **`__init__.py`**: Import và đăng ký job (⚠️ Bắt buộc import job mới ở đây)
+- `'cron'` + `seconds`: Chạy định kỳ theo giây
+- `'cron'` + `hour`, `minute`: Chạy vào giờ cụ thể
+- `'interval'` + `seconds`: Chạy lặp lại sau mỗi khoảng thời gian
 
-## Ví dụ job có sẵn
+## Ví dụ có sẵn
 
-- **`mitsui_job.py`**: Crawl dữ liệu từ Mitsui Chintai
-- **`print_job.py`**: Job test in thông báo 
+- **`print_job.py`**: Job test đơn giản
+- **`mitsui_job.py`**: Crawl Mitsui Chintai
+- **`tokyu_job.py`**: Crawl Tokyu
 
+## Lưu ý
+
+- Job phải là async function
+- Mỗi job cần `id` duy nhất
+- Nhớ import job mới trong `__init__.py` để job được đăng ký

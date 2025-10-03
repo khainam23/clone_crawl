@@ -1,26 +1,18 @@
-# Crawl Structure - Generic Property Crawler
+# Crawl Structure
 
-Module crawl thông tin chi tiết của từng property (bất động sản) từ URL cụ thể với hỗ trợ custom extractor.
+Module crawl thông tin chi tiết của property (bất động sản) từ URL và lưu vào MongoDB.
 
 ## Mục đích
 
-Crawl và extract dữ liệu chi tiết của một hoặc nhiều property từ danh sách URL, sau đó lưu vào MongoDB. Hỗ trợ custom extractor để xử lý các website khác nhau.
-
-## Cấu trúc files
-
-- `index.py` - Entry point chính, hàm `crawl_pages()` để crawl nhiều URLs
-- `property_crawler.py` - Class `EnhancedPropertyCrawler` xử lý crawl logic
-- `property_extractor.py` - Class `PropertyExtractor` extract dữ liệu từ HTML
-- `custom_rules.py` - Hệ thống custom rules để xử lý các trường hợp đặc biệt
+Crawl dữ liệu chi tiết từ danh sách URL property, hỗ trợ custom extractor cho từng website khác nhau.
 
 ## Cách sử dụng
 
-### Import và chạy cơ bản (không custom extractor)
+### 1. Crawl cơ bản
 
 ```python
 from app.jobs.crawl_strcture import crawl_pages
 
-# Crawl danh sách URLs với basic extractor
 urls = [
     "https://example.com/property/1",
     "https://example.com/property/2"
@@ -28,13 +20,13 @@ urls = [
 
 await crawl_pages(
     urls=urls,
-    batch_size=5,           # Số lượng URLs crawl đồng thời
-    id_mongo=123,           # ID để lưu vào MongoDB
-    collection_name='properties'  # Tên collection MongoDB
+    batch_size=5,                    # Số URL crawl đồng thời
+    id_mongo=123,                    # ID bắt đầu trong MongoDB
+    collection_name='properties'     # Tên collection
 )
 ```
 
-### Sử dụng với custom extractor
+### 2. Crawl với custom extractor
 
 ```python
 from app.jobs.crawl_strcture import crawl_pages
@@ -45,38 +37,42 @@ await crawl_pages(
     batch_size=5,
     id_mongo=123,
     collection_name='properties',
-    custom_extractor_factory=setup_custom_extractor  # Custom extractor cho Mitsui
+    custom_extractor_factory=setup_custom_extractor  # Custom cho website cụ thể
 )
 ```
 
-### Sử dụng trực tiếp crawler
+### 3. Sử dụng crawler trực tiếp
 
 ```python
 from app.jobs.crawl_strcture.property_crawler import EnhancedPropertyCrawler
-from app.jobs.mitsui_crawl_page.custom_extractor_factory import setup_custom_extractor
 
-# Với custom extractor
-crawler = EnhancedPropertyCrawler(setup_custom_extractor)
-results = await crawler.crawl_multiple_properties(urls, batch_size=5)
-
-# Hoặc basic crawler
-crawler = EnhancedPropertyCrawler()  # Không có custom extractor
+crawler = EnhancedPropertyCrawler()  # Hoặc truyền custom_extractor_factory
 results = await crawler.crawl_multiple_properties(urls, batch_size=5)
 ```
 
-## Tính năng chính
+## Tính năng
 
-- **Crawl đồng thời**: Hỗ trợ crawl nhiều URLs cùng lúc với batch_size
-- **Extract toàn diện**: Lấy đầy đủ thông tin property theo PropertyModel
-- **Custom rules**: Hệ thống rules linh hoạt xử lý các trường hợp đặc biệt
-- **Validation**: Validate dữ liệu trước khi lưu
-- **MongoDB integration**: Tự động lưu kết quả vào MongoDB
-- **Logging**: Hiển thị progress và summary chi tiết
+- ✅ Crawl đồng thời nhiều URL (batch processing)
+- ✅ Tự động lưu vào MongoDB sau mỗi batch
+- ✅ Hỗ trợ custom extractor cho từng website
+- ✅ Validate dữ liệu trước khi lưu
+- ✅ Logging chi tiết progress và summary
+
+## Cấu trúc
+
+```
+crawl_strcture/
+├── index.py                 # Entry point - hàm crawl_pages()
+├── property_crawler.py      # Logic crawl chính
+├── property_extractor.py    # Extract dữ liệu từ HTML
+├── custom_rules.py          # Hệ thống custom rules
+└── crawler_pool.py          # Quản lý pool crawlers
+```
 
 ## Output
 
-Kết quả crawl sẽ được lưu vào MongoDB với các thông tin:
-- Thông tin cơ bản property (title, price, area, etc.)
-- Hình ảnh (tách thành các field riêng biệt)
+Dữ liệu được lưu vào MongoDB bao gồm:
+- Thông tin property (title, price, area, ...)
+- Hình ảnh
 - Thông tin giao thông (stations)
-- Metadata crawl (timestamp, source URL)
+- Metadata (timestamp, source URL)

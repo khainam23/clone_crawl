@@ -2,7 +2,9 @@
 Factory for creating CustomExtractor with all processors
 Optimized version with simplified structure
 """
-from typing import Dict, Any, Callable
+import asyncio
+import inspect
+from typing import Dict, Any, Callable, Union
 
 from app.jobs.crawl_strcture.custom_rules import CustomExtractor
 from app.jobs.mitsui_crawl_page.image_extractor import ImageExtractor
@@ -17,19 +19,35 @@ class CustomExtractorFactory:
         self.property_extractor = PropertyDataExtractor()
     
     def _create_safe_wrapper(self, callback: Callable) -> Callable:
-        """Create wrapper for safe processing with error handling"""
-        def wrapper_func(data: Dict[str, Any]) -> Dict[str, Any]:
-            html = data.get('_html', '')
-            if not html:
-                return data
-            
-            try:
-                return callback(data, html)
-            except Exception as e:
-                print(f"❌ Error in {callback.__name__}: {e}")
-                return data
+        """Create wrapper for safe processing with error handling (sync and async)"""
         
-        return wrapper_func
+        # Check if callback is async
+        if inspect.iscoroutinefunction(callback):
+            async def async_wrapper_func(data: Dict[str, Any]) -> Dict[str, Any]:
+                html = data.get('_html', '')
+                if not html:
+                    return data
+                
+                try:
+                    return await callback(data, html)
+                except Exception as e:
+                    print(f"❌ Error in {callback.__name__}: {e}")
+                    return data
+            
+            return async_wrapper_func
+        else:
+            def sync_wrapper_func(data: Dict[str, Any]) -> Dict[str, Any]:
+                html = data.get('_html', '')
+                if not html:
+                    return data
+                
+                try:
+                    return callback(data, html)
+                except Exception as e:
+                    print(f"❌ Error in {callback.__name__}: {e}")
+                    return data
+            
+            return sync_wrapper_func
     
     def _store_html(self, html: str, data: Dict[str, Any]) -> tuple:
         """Store HTML in data for post-hooks"""

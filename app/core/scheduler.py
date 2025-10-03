@@ -5,7 +5,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.asyncio import AsyncIOExecutor
 import logging
-import inspect
 
 # Import jobs package to ensure all jobs are registered
 import app.jobs
@@ -38,17 +37,9 @@ scheduler = AsyncIOScheduler(
     timezone=settings.SCHEDULER_TIMEZONE
 )
 
-async def start_scheduler():
+def start_scheduler():
     """Start the scheduler"""
-    try:
-        # Run first time
-        for job in job_registry.jobs:
-            func = job['func']
-            if inspect.iscoroutinefunction(func):  # async function
-                await func()
-            else:  # sync function
-                func()
-                
+    try:        
         job_registry.add_jobs(scheduler)
         
         scheduler.start()

@@ -70,7 +70,7 @@ AMENITIES_MAPPING = {
     '浴室乾燥機': 'bath_water_heater',
     '給湯追い焚き有': 'auto_fill_bath',
     'キッチン有': 'system_kitchen',
-    'コンロ有': 'range',
+    # 'コンロ有': 'range',
     'オープン': 'counter_kitchen',
     'BS': 'bs',
     'CS': 'cable',

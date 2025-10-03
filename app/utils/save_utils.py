@@ -18,10 +18,6 @@ class SaveUtils:
         """Backup MongoDB collection ra file JSON trước khi thực hiện thao tác"""
         try:
             collection = get_collection(collection_name)
-            if collection is None:
-                logger.error(f"Failed to get collection '{collection_name}': Database not connected")
-                print(f"❌ Failed to get collection '{collection_name}': Database not connected")
-                return None
             
             # Đếm số lượng documents
             count = await collection.count_documents({})
@@ -67,10 +63,6 @@ class SaveUtils:
                     print(f"✅ Backup completed before cleaning")
             
             collection = get_collection(collection_name)
-            if collection is None:
-                logger.error(f"Failed to get collection '{collection_name}': Database not connected")
-                print(f"❌ Failed to get collection '{collection_name}': Database not connected")
-                return None
             
             # Xóa tất cả documents trong collection
             delete_result = await collection.delete_many({})
@@ -91,10 +83,6 @@ class SaveUtils:
         """Lưu kết quả vào MongoDB"""        
         try:
             collection = get_collection(collection_name)
-            if collection is None:
-                logger.error(f"Failed to get collection '{collection_name}': Database not connected")
-                print(f"❌ Failed to get collection '{collection_name}': Database not connected")
-                return None
         
             # Chuẩn bị documents để insert
             documents = []

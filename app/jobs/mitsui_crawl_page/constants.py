@@ -15,11 +15,6 @@ ID_MONGO = settings.ID_MONGO_MITSUI
 COLLECTION_NAME = settings.COLLECTION_NAME_MITSUI
 DEFAULT_NUM_PAGES = 74 #74
 
-# Coordinate conversion constants
-COORDINATE_OFFSET_LAT: Final = -1.291213
-COORDINATE_OFFSET_LON: Final = -5.82497
-DEFAULT_ZONE: Final = 9
-
 # Default amenities configuration
 DEFAULT_AMENITIES = {
     "room_link": "mitsui_link",

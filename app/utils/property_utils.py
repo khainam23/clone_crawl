@@ -96,9 +96,11 @@ class PropertyUtils:
         """
         Process pricing calculations with validation
         Calculates total_monthly, numeric_guarantor, and numeric_guarantor_max
+        Includes other_subscription_fees (めやす賃料) if available
         
         Args:
-            data: Property data dictionary containing monthly_rent and monthly_maintenance
+            data: Property data dictionary containing monthly_rent, monthly_maintenance,
+                  and optionally other_subscription_fees
             
         Returns:
             Updated data dictionary with calculated pricing fields
@@ -109,18 +111,20 @@ class PropertyUtils:
         try:
             monthly_rent = data['monthly_rent']
             monthly_maintenance = data['monthly_maintenance']
-            total_monthly = monthly_rent + monthly_maintenance
+            total_monthly = data['total_monthly']
+            
+            # Calculate total including めやす賃料 (estimated rent) if available
+            other_subscription_fees = total_monthly - (monthly_rent + monthly_maintenance)
 
             if total_monthly > 0:
                 data.update({
                     "total_monthly": total_monthly,
                     "numeric_guarantor": total_monthly * 50 // 100,
                     "numeric_guarantor_max": total_monthly * 80 // 100,
+                    "other_subscription_fees": other_subscription_fees
                 })
-                
-                logger.debug(f"Calculated pricing: total={total_monthly}円")
             else:
-                logger.warning(f"Invalid total monthly amount: {total_monthly}")
+                logger.warning(f"Invalid total monthly amount")
 
         except Exception as e:
             logger.error(f"Error processing pricing: {e}")

@@ -43,9 +43,6 @@ def get_database():
 
 def get_collection(collection_name: str):
     """Get collection instance"""
-    if mongodb.database is None:
-        logger.error("MongoDB database is not connected. Call connect_to_mongo() first.")
-        raise RuntimeError("MongoDB database is not connected. Call connect_to_mongo() first.")
     return mongodb.database[collection_name]
 
 # ------------------- Sync -------------------

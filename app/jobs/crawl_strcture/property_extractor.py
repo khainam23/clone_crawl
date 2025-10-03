@@ -58,16 +58,16 @@ class PropertyExtractor:
             return PropertyUtils.create_crawl_result(error=error_msg)
         
         # Extract và flatten data
-        extracted_data = self._extract_comprehensive_data(url, html_content)
+        extracted_data = await self._extract_comprehensive_data(url, html_content)
         flattened_data = self._flatten_nested_data(extracted_data)
         
         PropertyUtils.log_crawl_success(url, flattened_data)
         return PropertyUtils.create_crawl_result(property_data=flattened_data)
     
-    def _extract_comprehensive_data(self, url: str, html_content: str) -> Dict[str, Any]:
+    async def _extract_comprehensive_data(self, url: str, html_content: str) -> Dict[str, Any]:
         """Extract comprehensive property data từ HTML content"""
         extracted_data = get_empty_property_data(url)
-        return self.custom_extractor.extract_with_rules(html_content, extracted_data)
+        return await self.custom_extractor.extract_with_rules_async(html_content, extracted_data)
     
     def _flatten_nested_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Flatten nested data (images, stations) thành các field riêng biệt"""
