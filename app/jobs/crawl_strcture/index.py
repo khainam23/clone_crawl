@@ -24,7 +24,7 @@ async def crawl_pages(
         custom_extractor_factory: Optional factory function to create custom extractor
     """
     # Filter urls
-    urls, id_mongo = SaveUtils.filter_urls(urls, collection_name, id_mongo)
+    urls, id_mongo = await SaveUtils.filter_urls(urls, collection_name, id_mongo)
     
     start = datetime.now()
 
