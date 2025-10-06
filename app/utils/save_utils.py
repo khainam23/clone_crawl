@@ -77,6 +77,55 @@ class SaveUtils:
             logger.error(f"Error cleaning MongoDB collection {collection_name}: {e}")
             print(f"❌ Error cleaning MongoDB collection {collection_name}: {e}")
             return None
+        
+    @staticmethod
+    async def filter_urls(urls: List[str], collection_name: Optional[str] = "crawl_results", id_fallback: Optional[int] = 0) -> tuple[List[str], int]:
+        """
+        Lọc ra các URLs chưa tồn tại trong collection và lấy ID lớn nhất
+        
+        Args:
+            urls: Danh sách URLs cần kiểm tra
+            collection_name: Tên collection cần kiểm tra
+            
+        Returns:
+            Tuple gồm (danh sách URLs chưa tồn tại, ID MongoDB lớn nhất hiện tại)
+        """
+        try:
+            collection = get_collection(collection_name)
+            
+            # Lấy ID lớn nhất hiện tại trong collection
+            max_id_doc = await collection.find_one(
+                sort=[("_id", -1)],
+                projection={"_id": 1}
+            )
+            max_id = max_id_doc["_id"] if max_id_doc else id_fallback
+            
+            if not urls:
+                return [], max_id
+            
+            # Tạo index cho field 'link' nếu chưa có (để tăng tốc độ query)
+            try:
+                await collection.create_index("link")
+            except Exception as e:
+                logger.warning(f"Index creation skipped or failed: {e}")
+            
+            # Tìm các URLs đã tồn tại trong collection
+            existing_urls = await collection.distinct("link", {"link": {"$in": urls}})
+            existing_urls_set = set(existing_urls)
+            
+            # Lọc ra các URLs chưa tồn tại
+            new_urls = [url for url in urls if url not in existing_urls_set]
+            
+            logger.info(f"Filtered URLs: {len(urls)} total, {len(existing_urls_set)} existing, {len(new_urls)} new | Max ID: {max_id}")
+            print(f"🔍 Filtered URLs: {len(urls)} total, {len(existing_urls_set)} existing, {len(new_urls)} new | Max ID: {max_id}")
+            
+            return new_urls, max_id
+            
+        except Exception as e:
+            logger.error(f"Error filtering URLs from collection {collection_name}: {e}")
+            print(f"❌ Error filtering URLs: {e}")
+            # Trả về tất cả URLs và ID = 0 nếu có lỗi (fail-safe)
+            return urls, id_fallback
     
     @staticmethod
     async def save_db_results(results: List[Dict[str, Any]], collection_name: Optional[str] = "crawl_results", _id: Optional[int] = 0) -> Optional[str]:

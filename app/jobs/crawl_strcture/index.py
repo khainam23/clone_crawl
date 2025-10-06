@@ -23,6 +23,9 @@ async def crawl_pages(
         collection_name: MongoDB collection name
         custom_extractor_factory: Optional factory function to create custom extractor
     """
+    # Filter urls
+    urls, id_mongo = SaveUtils.filter_urls(urls, collection_name, id_mongo)
+    
     start = datetime.now()
 
     # Tracking variables
