@@ -2,7 +2,14 @@
 Numeric processing utilities for rent, deposit, key money, etc.
 """
 import re
-from app.utils.html_processor_utils import HtmlProcessor
+
+# Negative indicators for all extraction functions
+_NEGATIVE_INDICATORS = ('-', 'なし', '無し', '×', '不可', 'ー', '無', 'NO', 'No', 'no')
+
+
+def _has_negative_indicator(text: str) -> bool:
+    """Check if text contains any negative indicator"""
+    return any(indicator in text for indicator in _NEGATIVE_INDICATORS)
 
 
 def extract_numeric_value(text: str) -> int:
@@ -15,27 +22,16 @@ def extract_numeric_value(text: str) -> int:
     Returns:
         Numeric value as integer, 0 if not found or contains negative indicators
     """
-    if not text:
+    if not text or _has_negative_indicator(text):
         return 0
-    
-    # Check for negative indicators
-    negative_indicators = ['-', 'なし', '無し', '×', '不可', 'ー', '無', 'NO', 'No', 'no']
-    if any(indicator in text for indicator in negative_indicators):
-        return 0
-    
-    html_processor = HtmlProcessor()
     
     # Extract number with 万 (10,000) multiplier
-    man_pattern = html_processor.compile_regex(r'(\d+(?:\.\d+)?)万')
-    man_match = man_pattern.search(text)
-    if man_match:
-        return int(float(man_match.group(1)) * 10000)
+    if match := re.search(r'(\d+(?:\.\d+)?)万', text):
+        return int(float(match.group(1)) * 10000)
     
     # Extract regular numbers
-    number_pattern = html_processor.compile_regex(r'(\d+(?:\.\d+)?)')
-    number_match = number_pattern.search(text)
-    if number_match:
-        return int(float(number_match.group(1)))
+    if match := re.search(r'(\d+(?:\.\d+)?)', text):
+        return int(float(match.group(1)))
     
     return 0
 
@@ -50,21 +46,11 @@ def extract_months_multiplier(text: str) -> float:
     Returns:
         Months as float, 0 if not found or contains negative indicators
     """
-    if not text:
+    if not text or _has_negative_indicator(text):
         return 0
     
-    # Check for negative indicators
-    negative_indicators = ['-', 'なし', '無し', '×', '不可', 'ー', '無', 'NO', 'No', 'no']
-    if any(indicator in text for indicator in negative_indicators):
-        return 0
-    
-    html_processor = HtmlProcessor()
-    
-    # Extract months
-    months_pattern = html_processor.compile_regex(r'(\d+(?:\.\d+)?)ヶ月')
-    months_match = months_pattern.search(text)
-    if months_match:
-        return float(months_match.group(1))
+    if match := re.search(r'(\d+(?:\.\d+)?)ヶ月', text):
+        return float(match.group(1))
     
     return 0
 
@@ -80,14 +66,9 @@ def extract_area_size(text: str) -> float:
         Area size as float, 0 if not found
     """
     if not text:
-        return 0
+        return 0.0
     
-    html_processor = HtmlProcessor()
+    if match := re.search(r'(\d+(?:\.\d+)?)\s*m[\u00B2\u33A1]?', text):
+        return float(match.group(1))
     
-    # Extract area size
-    area_pattern = html_processor.compile_regex(r'(\d+(?:\.\d+)?)m²')
-    area_match = area_pattern.search(text)
-    if area_match:
-        return float(area_match.group(1))
-    
-    return 0
+    return 0.0
