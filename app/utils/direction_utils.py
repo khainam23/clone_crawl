@@ -17,7 +17,7 @@ DIRECTION_MAPPING = {
 }
 
 
-def extract_direction_info(data: Dict[str, str], direction_text: str):
+def extract_direction_info(data: Dict[str, str], direction_text: str) -> Dict[str, str]:
     """
     Extract apartment facing direction
     
@@ -31,3 +31,5 @@ def extract_direction_info(data: Dict[str, str], direction_text: str):
         if jp_direction in direction_text:
             data[field_name] = 'Y'
             break
+        
+    return data
