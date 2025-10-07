@@ -21,7 +21,7 @@ async def main():
         print("🔌 Connecting to MongoDB...")
         await connect_to_mongo()
         print("✅ MongoDB connected successfully!")
-        await SaveUtils.clean_db(settings.COLLECTION_NAME_MITSUI, auto_backup=True)
+        # await SaveUtils.clean_db(settings.COLLECTION_NAME_MITSUI, auto_backup=True)
         
         await city_utils.init()
         await prefecture_utils.init()
