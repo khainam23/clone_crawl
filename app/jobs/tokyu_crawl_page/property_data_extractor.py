@@ -69,8 +69,10 @@ class PropertyDataExtractor:
             if year := extract_construction_year(construction_text):
                 data['year'] = year
                 
-        if room_type := self._get_dt_dd('間取り（タイプ）'):
+        if room_type := self._get_td('間取り（タイプ）'):
             data['room_type'] = extract_room_type(room_type)
+            
+        print(room_type)
             
         return data
     
