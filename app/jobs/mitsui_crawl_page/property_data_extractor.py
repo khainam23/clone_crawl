@@ -298,6 +298,8 @@ class PropertyDataExtractor:
         if estimated_rent_text := self._extract_dt_dd_content(html, 'めやす賃料'):
             if match := re.search(r'([\d,]+)円', estimated_rent_text):
                 data['total_monthly'] = int(match.group(1).replace(',', ''))
+            else:
+                data['total_monthly'] = 0
     
     def extract_lock_exchange(self, data: Dict[str, Any], html: str):
         """Extract lock exchange fee"""

@@ -1,4 +1,5 @@
 from typing import Dict, Any, Optional
+import re
 
 from app.utils.html_processor_utils import HtmlProcessor
 from app.utils.structure_utils import extract_structure_info
@@ -71,6 +72,8 @@ class PropertyDataExtractor:
                 
         if room_type := self._get_td('間取り（タイプ）'):
             data['room_type'] = extract_room_type(room_type)
+        else:
+            data['room_type'] = '1R'
             
         print(room_type)
             

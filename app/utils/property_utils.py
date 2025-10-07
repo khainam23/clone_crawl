@@ -113,6 +113,9 @@ class PropertyUtils:
             monthly_maintenance = data['monthly_maintenance']
             total_monthly = data['total_monthly']
             
+            if total_monthly == 0:
+                total_monthly = monthly_rent + monthly_maintenance
+            
             # Calculate total including めやす賃料 (estimated rent) if available
             other_subscription_fees = total_monthly - (monthly_rent + monthly_maintenance)
 

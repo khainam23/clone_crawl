@@ -90,4 +90,4 @@ def extract_room_type(room_type):
         if cleaned in room_type_mapping:
             return cleaned
     
-    return None
+    return '1R'

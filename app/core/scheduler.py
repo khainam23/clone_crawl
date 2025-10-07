@@ -12,7 +12,14 @@ from app.core.config import settings
 from app.jobs.index import job_registry
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log', encoding='utf-8'),  # Ghi ra file
+        logging.StreamHandler()                            # In ra console
+    ]
+)
 logger = logging.getLogger(__name__)
 
 # Scheduler configuration
