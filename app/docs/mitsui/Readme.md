@@ -44,7 +44,7 @@ Crawler này xử lý dữ liệu từ website Mitsui với một số đặc th
 
 - Một vài trường tiền cần tính toán theo công thức riêng
 - Không sử dụng trực tiếp giá trị từ source
-- **Thêm trường mới**: `total_monthly` (int) - Lưu lại tổng `monthly_rent + monthly_maintenance`
+- **Chỉ dùng cho tính toán**: `total_monthly` (int) - Lưu lại tổng `monthly_rent + monthly_maintenance` + `other_subscription_fees` - nếu other_subscription_fees < 0 thì đặt nó là 0
 - **Guarantor Min** = `total_monthly * 0.5`
 - **Guarantor Max** = `total_monthly * 0.8`
 
@@ -84,8 +84,7 @@ Xử lý các format ngày tháng đặc biệt:
 
 ### 6. Chuyển đổi tọa độ
 
-- Tọa độ phải tính toán lại chuyển đổi từ hệ phẳng sang tọa độ WGS84
-- Sử dụng công thức chuyển đổi chuẩn đã được thiết kế trong thư mục `utils` của page
+- Trong trang sẽ có một link tới gg, tuy nhiên đơn giản sẽ dùng link gg này `https://www.google.co.jp/maps/place/{encoded_address}` sau đó chờ để xuất ra tọa độ dựa vào `@lap,lat`
 
 ### 7. Xử lý địa chỉ
 

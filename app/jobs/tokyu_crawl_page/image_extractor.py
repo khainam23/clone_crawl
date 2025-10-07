@@ -36,7 +36,7 @@ class ImageExtractor:
             # Optimized: reduced timeout, no verbose logging
             response = http_client.get(
                 gallery_link, 
-                timeout=(3, 7)  # (connect timeout, read timeout) - faster than 10s
+                timeout=(3, 7)  # (connect timeout, read timeout)
             )
             
             if response.status_code != 200:

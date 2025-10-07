@@ -81,6 +81,34 @@ class PropertyDataExtractor:
             func(data, html)
         except Exception as e:
             print(f"❌ Error in {func_name}: {e}")
+            
+            
+    #==========================# Methods #========================#
+    def get_static_info(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
+        """Process static information extraction"""
+        self._parse_html_once(html)
+        
+        extractors = [
+            ('header_info', self.extract_header_info),
+            ('available_from', self.extract_available_from),
+            ('parking', self.extract_parking),
+            ('address_info', self.extract_address_info),
+            ('rent_info', self.extract_rent_info),
+            ('estimated_rent', self.extract_estimated_rent),
+            ('room_info', self.extract_room_info),
+            ('construction_date', self.extract_construction_date),
+            ('structure_info', self.extract_structure_info),
+            ('renewal_fee', self.extract_renewal_fee),
+            ('direction_info', self.extract_direction_info),
+            ('lock_exchange', self.extract_lock_exchange),
+            ('amenities', self.extract_amenities),
+            ('building_description', self.extract_building_description),
+        ]
+        
+        for name, extractor in extractors:
+            self._safe_extract(name, extractor, data, html)
+        
+        return data
     
     async def convert_coordinates(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
         """Fetch coordinates from Google Maps using address from data"""
@@ -202,8 +230,10 @@ class PropertyDataExtractor:
             monthly_rent, monthly_maintenance = int(match.group(1)), int(match.group(2))
         elif match := re.search(r'(\d+)円', rent_text):
             monthly_rent = int(match.group(1))
+            
+        agency_fee = int(monthly_rent * 1.1)
 
-        data.update({'monthly_rent': monthly_rent, 'monthly_maintenance': monthly_maintenance})
+        data.update({'monthly_rent': monthly_rent, 'monthly_maintenance': monthly_maintenance, 'numeric_agency': agency_fee})
 
     def extract_deposit_key_info(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
         """Extract deposit and key money"""
@@ -263,7 +293,7 @@ class PropertyDataExtractor:
             extract_direction_info(data, direction_text)
     
     def extract_estimated_rent(self, data: Dict[str, Any], html: str):
-        """Extract めやす賃料 (estimated rent) as other_subscription_fees"""
+        """Extract めやす賃料 (estimated rent) as total_monthly"""
         if estimated_rent_text := self._extract_dt_dd_content(html, 'めやす賃料'):
             if match := re.search(r'([\d,]+)円', estimated_rent_text):
                 data['total_monthly'] = int(match.group(1).replace(',', ''))
@@ -285,31 +315,7 @@ class PropertyDataExtractor:
         if description_text := self._extract_dt_dd_content(html, '備考'):
             data['building_description_ja'] = description_text
     
-    def get_static_info(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
-        """Process static information extraction"""
-        self._parse_html_once(html)
-        
-        extractors = [
-            ('header_info', self.extract_header_info),
-            ('available_from', self.extract_available_from),
-            ('parking', self.extract_parking),
-            ('address_info', self.extract_address_info),
-            ('rent_info', self.extract_rent_info),
-            ('estimated_rent', self.extract_estimated_rent),
-            ('room_info', self.extract_room_info),
-            ('construction_date', self.extract_construction_date),
-            ('structure_info', self.extract_structure_info),
-            ('renewal_fee', self.extract_renewal_fee),
-            ('direction_info', self.extract_direction_info),
-            ('lock_exchange', self.extract_lock_exchange),
-            ('amenities', self.extract_amenities),
-            ('building_description', self.extract_building_description),
-        ]
-        
-        for name, extractor in extractors:
-            self._safe_extract(name, extractor, data, html)
-        
-        return data
+    #=========================# Other methods #======================#
     
     def extract_station(self, data: Dict[str, Any], html: str):
         self.station_service.set_station_data(data=data, html=html)

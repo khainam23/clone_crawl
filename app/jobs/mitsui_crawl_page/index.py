@@ -12,6 +12,7 @@ from app.core.config import settings
 from .custom_extractor_factory import setup_custom_extractor
 from .constants import URL_MULTI, ITEM_SELECTOR, DEFAULT_NUM_PAGES, ID_MONGO, COLLECTION_NAME, ITEM_MAX_NUM_PAGE
 
+# Lấy link của nhà trong trang
 def _fetch_page_urls(page: int, headers: dict, detect_max_pages: bool = False) -> Tuple[List[str], Optional[int]]:
     """
     Fetch URLs from a single page
@@ -78,42 +79,13 @@ async def crawl_multi():
     Main crawling function for Mitsui properties
     Fetches property URLs from multiple pages and crawls them
     """
-    print(f"🚀 Starting Mitsui crawl...")
+    from app.jobs.crawl_strcture.handle_multi_crawl_url import crawl_multi_pages
     
-    headers = {
-        "User-Agent": settings.CRAWLER_USER_AGENT
-    }
-    
-    # Collect all URLs from all pages
-    all_urls = []
-    
-    # First page: fetch URLs and detect max pages
-    print("📄 Fetching page 1 and detecting pagination...")
-    page_urls, detected_max_pages = _fetch_page_urls(1, headers, detect_max_pages=True)
-    all_urls.extend(page_urls)
-    
-    # Use detected max pages or fallback to DEFAULT_NUM_PAGES
-    max_pages = detected_max_pages if detected_max_pages else DEFAULT_NUM_PAGES
-    print(f"📊 Total pages to crawl: {max_pages}")
-    
-    # Fetch remaining pages
-    for page in range(2, max_pages + 1):
-        page_urls, _ = _fetch_page_urls(page, headers)
-        all_urls.extend(page_urls)
-    
-    print(f"✅ Collected {len(all_urls)} total URLs")
-    
-    if not all_urls:
-        print("⚠️ No URLs found to crawl")
-        return
-    
-    # Crawl all collected URLs
-    await crawl_pages(
-        urls=all_urls,
-        batch_size=settings.BATCH_SIZE,
+    await crawl_multi_pages(
+        site_name="Mitsui",
+        fetch_page_urls_func=_fetch_page_urls,
+        default_num_pages=DEFAULT_NUM_PAGES,
         id_mongo=ID_MONGO,
         collection_name=COLLECTION_NAME,
         custom_extractor_factory=setup_custom_extractor
     )
-    
-    print(f"🎉 Mitsui crawl completed!")

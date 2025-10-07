@@ -7,6 +7,7 @@ import aiohttp
 from typing import Optional, Callable, List
 from app.core.config import CrawlerConfig
 from .custom_rules import CustomExtractor
+import uuid
 
 class CrawlerPool:
     """
@@ -29,6 +30,7 @@ class CrawlerPool:
         self.pool_size = pool_size
         self.config = CrawlerConfig()
         self.custom_extractor_factory = custom_extractor_factory
+        self._instance_id = str(uuid.uuid4())[:8]  # Debug: unique ID cho mỗi instance
         
         # Pool của các HTTP sessions
         self._sessions: List[aiohttp.ClientSession] = []
@@ -36,6 +38,8 @@ class CrawlerPool:
         self._initialized = False
         self._lock = asyncio.Lock()
         self._connector: Optional[aiohttp.TCPConnector] = None
+        
+        print(f"🆕 CrawlerPool instance created: {self._instance_id}")
         
     async def initialize(self):
         """
@@ -45,7 +49,7 @@ class CrawlerPool:
             if self._initialized:
                 return
                 
-            print(f"🔧 Initializing HTTP session pool with {self.pool_size} instances...")
+            print(f"🔧 [{self._instance_id}] Initializing HTTP session pool with {self.pool_size} instances...")
             
             # Tạo connector với connection pooling
             self._connector = aiohttp.TCPConnector(
@@ -72,12 +76,12 @@ class CrawlerPool:
                     )
                     self._sessions.append(session)
                     await self._available_sessions.put(session)
-                    print(f"✅ Session {i+1}/{self.pool_size} initialized")
+                    print(f"✅ [{self._instance_id}] Session {i+1}/{self.pool_size} initialized")
                 except Exception as e:
-                    print(f"❌ Failed to initialize session {i+1}: {e}")
+                    print(f"❌ [{self._instance_id}] Failed to initialize session {i+1}: {e}")
                     
             self._initialized = True
-            print(f"🎉 HTTP session pool initialized with {len(self._sessions)} instances")
+            print(f"🎉 [{self._instance_id}] HTTP session pool initialized with {len(self._sessions)} instances")
     
     async def acquire(self) -> aiohttp.ClientSession:
         """
@@ -110,15 +114,15 @@ class CrawlerPool:
             if not self._initialized:
                 return
                 
-            print(f"🔒 Closing HTTP session pool...")
+            print(f"🔒 [{self._instance_id}] Closing HTTP session pool...")
             
             # Đóng tất cả sessions
             for i, session in enumerate(self._sessions):
                 try:
                     await session.close()
-                    print(f"✅ Session {i+1}/{len(self._sessions)} closed")
+                    print(f"✅ [{self._instance_id}] Session {i+1}/{len(self._sessions)} closed")
                 except Exception as e:
-                    print(f"⚠️ Error closing session {i+1}: {e}")
+                    print(f"⚠️ [{self._instance_id}] Error closing session {i+1}: {e}")
             
             self._sessions.clear()
             
@@ -126,9 +130,9 @@ class CrawlerPool:
             if self._connector:
                 try:
                     await self._connector.close()
-                    print(f"✅ Connector closed")
+                    print(f"✅ [{self._instance_id}] Connector closed")
                 except Exception as e:
-                    print(f"⚠️ Error closing connector: {e}")
+                    print(f"⚠️ [{self._instance_id}] Error closing connector: {e}")
             
             # Clear queue
             while not self._available_sessions.empty():
@@ -138,7 +142,7 @@ class CrawlerPool:
                     break
                     
             self._initialized = False
-            print(f"🎉 HTTP session pool closed")
+            print(f"🎉 [{self._instance_id}] HTTP session pool closed")
     
     async def __aenter__(self):
         """Context manager entry"""

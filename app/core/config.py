@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     CRAWLER_DELAY: float = 1.0
     BATCH_SIZE: int = 10
     CRAWLER_TIMEOUT: int = 30  # HTTP request timeout in seconds
+    LAST_UPDATED: int = 172800 # About 2 days
         
     # FOR IMAGE
     MAX_IMAGES: int = 16

@@ -14,13 +14,7 @@ from app.jobs.mitsui_crawl_page.property_data_extractor import PropertyDataExtra
 class CustomExtractorFactory:
     """Factory for creating and configuring CustomExtractor with optimized structure"""
     
-    def __init__(self):
-        self.image_extractor = ImageExtractor()
-        self.property_extractor = PropertyDataExtractor()
-    
     def _create_safe_wrapper(self, callback: Callable) -> Callable:
-        """Create wrapper for safe processing with error handling (sync and async)"""
-        
         # Check if callback is async
         if inspect.iscoroutinefunction(callback):
             async def async_wrapper_func(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -56,6 +50,10 @@ class CustomExtractorFactory:
     
     def setup_custom_extractor(self) -> CustomExtractor:
         """Setup optimized custom extractor with processing pipeline"""
+        # Create new instances for each extractor to avoid shared state in parallel processing
+        image_extractor = ImageExtractor()
+        property_extractor = PropertyDataExtractor()
+        
         extractor = CustomExtractor()
         
         # Pre-processing: Store HTML
@@ -63,15 +61,15 @@ class CustomExtractorFactory:
         
         # Processing pipeline (order matters!)
         processors = [
-            self.image_extractor.extract_images,           # 1. Extract images
-            self.property_extractor.get_static_info,       # 2. Extract all static info
-            self.property_extractor.convert_coordinates,   # 3. Convert coordinates
-            self.property_extractor.set_default_amenities, # 4. Set default amenities
-            self.property_extractor.process_pricing,       # 5. Calculate pricing
-            self.property_extractor.extract_deposit_key_info, # 6. Extract deposit/key (needs total_monthly)
-            self.property_extractor.get_info_district,     # 7. Get district info (needs lat/lng)
-            # self.property_extractor.extract_station,      # 8. Extract station service
-            self.property_extractor.cleanup_temp_fields,   # 9. Cleanup temporary fields
+            image_extractor.extract_images,           # 1. Extract images
+            property_extractor.get_static_info,       # 2. Extract all static info
+            property_extractor.convert_coordinates,   # 3. Convert coordinates
+            property_extractor.set_default_amenities, # 4. Set default amenities
+            property_extractor.process_pricing,       # 5. Calculate pricing
+            property_extractor.extract_deposit_key_info, # 6. Extract deposit/key (needs total_monthly)
+            property_extractor.get_info_district,     # 7. Get district info (needs lat/lng)
+            # property_extractor.extract_station,      # 8. Extract station service
+            property_extractor.cleanup_temp_fields,   # 9. Cleanup temporary fields
         ]
         
         # Add all processors with error handling

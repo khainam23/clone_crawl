@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 async def crawl_tokyu():
     try:
         # Làm rỗng trước khi run
-        await SaveUtils.clean_db(constants.COLLECTION_NAME, auto_backup=True)
+        # await SaveUtils.clean_db(constants.COLLECTION_NAME, auto_backup=True)
         
         await crawl_multi()
         # await crawl_pages(["https://rent.tokyu-housing-lease.co.jp/rent/8035819/118456"])
@@ -26,7 +26,7 @@ async def crawl_tokyu():
 crawl_tokyu_job_config = {
     'func': crawl_tokyu,
     'trigger': 'cron',
-    'hour': 8,
+    'hour': 10,
     'id': 'crawl_tokyu_job',
     'replace_existing': True
 }

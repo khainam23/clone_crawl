@@ -13,11 +13,6 @@ from app.jobs.tokyu_crawl_page.property_data_extractor import PropertyDataExtrac
 class CustomExtractorFactory:
     """Factory for creating and configuring CustomExtractor with optimized pipeline"""
     
-    def __init__(self):
-        self.image_extractor = ImageExtractor()
-        self.property_extractor = PropertyDataExtractor()
-        self.map_extractor = MapExtractor()
-    
     def _create_safe_wrapper(self, callback):
         """Private: Wrapper for safe processing with error handling"""
         def wrapper_func(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -58,6 +53,11 @@ class CustomExtractorFactory:
         13. Extract map coordinates
         14. Cleanup temporary fields (_html)
         """
+        # Create new instances for each extractor to avoid shared state in parallel processing
+        image_extractor = ImageExtractor()
+        property_extractor = PropertyDataExtractor()
+        map_extractor = MapExtractor()
+        
         extractor = CustomExtractor()
         
         # Pre-processing: Store HTML
@@ -65,20 +65,20 @@ class CustomExtractorFactory:
         
         # Define processing pipeline in order
         processors = [
-            self.image_extractor.extract_images,              # 1. Extract images
-            self.property_extractor.extract_building_info,    # 2. Building info
-            self.property_extractor.extract_unit_info,        # 3. Unit info
-            self.property_extractor.extract_rental_costs,     # 4. Rental costs
-            self.property_extractor.extract_other_fee,        # 5. Other fees
-            self.property_extractor.extract_unit_description, # 6. Unit description
-            self.property_extractor.extract_deposits_and_fees,# 7. Deposits & fees
-            self.property_extractor.extract_future,           # 8. Amenities
-            self.property_extractor.extract_is_pets,          # 9. Pet policy
-            self.property_extractor.set_default_amenities,    # 10. Default amenities
-            self.property_extractor.extract_money,            # 11. Financial calculations
-            self.map_extractor.extract_map,                   # 12. Map coordinates
-            # self.property_extractor.extract_station,          # 13. Station info
-            self.property_extractor.cleanup_temp_fields,      # 14. Cleanup
+            image_extractor.extract_images,              # 1. Extract images
+            property_extractor.extract_building_info,    # 2. Building info
+            property_extractor.extract_unit_info,        # 3. Unit info
+            property_extractor.extract_rental_costs,     # 4. Rental costs
+            property_extractor.extract_other_fee,        # 5. Other fees
+            property_extractor.extract_unit_description, # 6. Unit description
+            property_extractor.extract_deposits_and_fees,# 7. Deposits & fees
+            property_extractor.extract_future,           # 8. Amenities
+            property_extractor.extract_is_pets,          # 9. Pet policy
+            property_extractor.set_default_amenities,    # 10. Default amenities
+            property_extractor.extract_money,            # 11. Financial calculations
+            map_extractor.extract_map,                   # 12. Map coordinates
+            # property_extractor.extract_station,          # 13. Station info
+            property_extractor.cleanup_temp_fields,      # 14. Cleanup
         ]
         
         # Add all processors with error handling

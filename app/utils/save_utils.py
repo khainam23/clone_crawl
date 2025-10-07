@@ -4,6 +4,7 @@ File operation utility functions
 import logging, time
 from typing import List, Dict, Any, Optional
 import logging, time, json, os
+from app.core.config import settings
 
 from app.db.mongodb import get_collection
 
@@ -81,14 +82,15 @@ class SaveUtils:
     @staticmethod
     async def filter_urls(urls: List[str], collection_name: Optional[str] = "crawl_results", id_fallback: Optional[int] = 0) -> tuple[List[str], int]:
         """
-        Lọc ra các URLs chưa tồn tại trong collection và lấy ID lớn nhất
+        Lọc ra các URLs chưa tồn tại trong collection hoặc đã quá hạn cập nhật và lấy ID lớn nhất
         
         Args:
             urls: Danh sách URLs cần kiểm tra
             collection_name: Tên collection cần kiểm tra
+            id_fallback: ID mặc định nếu collection rỗng
             
         Returns:
-            Tuple gồm (danh sách URLs chưa tồn tại, ID MongoDB lớn nhất hiện tại)
+            Tuple gồm (danh sách URLs chưa tồn tại hoặc cần cập nhật, ID MongoDB lớn nhất hiện tại)
         """
         try:
             collection = get_collection(collection_name)
@@ -109,15 +111,29 @@ class SaveUtils:
             except Exception as e:
                 logger.warning(f"Index creation skipped or failed: {e}")
             
-            # Tìm các URLs đã tồn tại trong collection
-            existing_urls = await collection.distinct("link", {"link": {"$in": urls}})
-            existing_urls_set = set(existing_urls)
+            # Tính thời gian hiện tại
+            current_time = time.time()
+            cutoff_time = current_time - settings.LAST_UPDATED
             
-            # Lọc ra các URLs chưa tồn tại
-            new_urls = [url for url in urls if url not in existing_urls_set]
+            # Tìm các URLs đã tồn tại và còn mới (created_date > cutoff_time)
+            # Chỉ lấy những URLs còn fresh, không cần cập nhật
+            fresh_urls = await collection.distinct(
+                "link", 
+                {
+                    "link": {"$in": urls},
+                    "created_date": {"$gt": cutoff_time}
+                }
+            )
+            fresh_urls_set = set(fresh_urls)
             
-            logger.info(f"Filtered URLs: {len(urls)} total, {len(existing_urls_set)} existing, {len(new_urls)} new | Max ID: {max_id}")
-            print(f"🔍 Filtered URLs: {len(urls)} total, {len(existing_urls_set)} existing, {len(new_urls)} new | Max ID: {max_id}")
+            # Lọc ra các URLs chưa tồn tại hoặc đã quá hạn
+            new_urls = [url for url in urls if url not in fresh_urls_set]
+            
+            # Tính số URLs outdated để logging
+            outdated_count = len([url for url in urls if url not in fresh_urls_set and url in urls]) - (len(urls) - len(fresh_urls_set))
+            
+            logger.info(f"Filtered URLs: {len(urls)} total, {len(fresh_urls_set)} fresh, {len(new_urls)} to process | Max ID: {max_id}")
+            print(f"🔍 Filtered URLs: {len(urls)} total, {len(fresh_urls_set)} fresh, {len(new_urls)} to process | Max ID: {max_id}")
             
             return new_urls, max_id
             
@@ -129,28 +145,47 @@ class SaveUtils:
     
     @staticmethod
     async def save_db_results(results: List[Dict[str, Any]], collection_name: Optional[str] = "crawl_results", _id: Optional[int] = 0) -> Optional[str]:
-        """Lưu kết quả vào MongoDB"""        
+        """Lưu kết quả vào MongoDB - Insert mới hoặc Update nếu URL đã tồn tại"""        
         try:
             collection = get_collection(collection_name)
-        
-            # Chuẩn bị documents để insert
-            documents = []
-            for i, result in enumerate(results):
-                document = {
-                    **result,
-                    "created_date": time.time(),
-                    "_id": _id + i + 1
-                }
-                
-                documents.append(document)
             
-            # Insert vào MongoDB
-            if documents:
-                insert_result = await collection.insert_many(documents)
-                inserted_count = len(insert_result.inserted_ids)
+            inserted_count = 0
+            updated_count = 0
+            current_new_id = _id
+            
+            for result in results:
+                link = result.get("link")
+                if not link:
+                    logger.warning("Result missing 'link' field, skipping")
+                    continue
                 
-                logger.info(f"Saved {inserted_count} results to MongoDB collection: {collection_name}")
-                print(f"💾 Saved {inserted_count} results to MongoDB collection: {collection_name}")
+                # Kiểm tra URL đã tồn tại chưa
+                existing_doc = await collection.find_one({"link": link})
+                
+                if existing_doc:
+                    # URL đã tồn tại → UPDATE (giữ nguyên _id cũ)
+                    document = {
+                        **result,
+                        "created_date": time.time(),
+                        "_id": existing_doc["_id"]  # Giữ nguyên _id cũ
+                    }
+                    await collection.replace_one({"_id": existing_doc["_id"]}, document)
+                    updated_count += 1
+                else:
+                    # URL mới → INSERT với _id mới
+                    current_new_id += 1
+                    document = {
+                        **result,
+                        "created_date": time.time(),
+                        "_id": str(current_new_id)
+                    }
+                    await collection.insert_one(document)
+                    inserted_count += 1
+            
+            total_count = inserted_count + updated_count
+            if total_count > 0:
+                logger.info(f"Saved {total_count} results to MongoDB collection '{collection_name}' (Inserted: {inserted_count}, Updated: {updated_count})")
+                print(f"💾 Saved {total_count} results to '{collection_name}' (✨ New: {inserted_count}, 🔄 Updated: {updated_count})")
                 return f"{collection_name}"
             else:
                 logger.warning("No results to save")
