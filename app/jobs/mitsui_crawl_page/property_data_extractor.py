@@ -17,6 +17,7 @@ from app.services.station_service import Station_Service
 from app.jobs.mitsui_crawl_page.coordinate_converter import CoordinateConverter
 from app.jobs.mitsui_crawl_page.constants import DEFAULT_AMENITIES
 from app.utils.location_utils import get_district_info
+from app.utils.room_type_utils import extract_room_type
 
 class PropertyDataExtractor:
     """Handles extraction of property data from HTML"""
@@ -255,7 +256,7 @@ class PropertyDataExtractor:
         room_info_text = self._extract_dt_dd_content(html, '間取り・面積')
         if room_info_text and (match := re.search(r'^([^/]+?)\s*/\s*([\d.]+)㎡', room_info_text)):
             data.update({
-                'room_type': re.sub(r'[^\w]', '', match.group(1).strip()),
+                'room_type': extract_room_type(match.group(1).strip()),
                 'size': float(match.group(2))
             })
     

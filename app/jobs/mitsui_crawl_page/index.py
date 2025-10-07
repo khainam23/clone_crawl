@@ -43,10 +43,15 @@ def _fetch_page_urls(page: int, headers: dict, detect_max_pages: bool = False) -
         items = tree.cssselect(ITEM_SELECTOR)
         print(f"📄 Page {page}: Found {len(items)} items")
         
-        for item in items:
+        for i, item in enumerate(items):
+            if i >= 3:
+                break
+            
             link = item.get("data-js-room-link")
             if link:
                 urls.append(link)
+                
+        print(f"📄 Page {page}: Found {len(urls)} links")
         
         # Detect max pages if requested (only on first page)
         if detect_max_pages:

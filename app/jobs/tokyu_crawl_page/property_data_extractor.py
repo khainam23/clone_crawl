@@ -12,6 +12,7 @@ from app.utils.floor_utils import extract_floor_info
 from app.jobs.tokyu_crawl_page.constants import DEFAULT_AMENITIES
 from app.services.station_service import Station_Service
 from app.utils.building_type_utils import extract_building_type
+from app.utils.room_type_utils import extract_room_type
 
 
 class PropertyDataExtractor:
@@ -67,7 +68,10 @@ class PropertyDataExtractor:
         if construction_text := self._get_dt_dd('築年月'):
             if year := extract_construction_year(construction_text):
                 data['year'] = year
-        
+                
+        if room_type := self._get_dt_dd('間取り（タイプ）'):
+            data['room_type'] = extract_room_type(room_type)
+            
         return data
     
     def extract_unit_description(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
