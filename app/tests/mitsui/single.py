@@ -28,7 +28,7 @@ async def main():
         # Run the crawl with Mitsui custom extractor
         await crawl_pages(
             urls=[
-                "https://www.mitsui-chintai.co.jp/rf/tatemono/10229/707", 
+                "https://www.mitsui-chintai.co.jp/rf/tatemono/74340/102", 
             ],
             batch_size=1,
             id_mongo=0,

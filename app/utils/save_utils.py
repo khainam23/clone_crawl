@@ -100,7 +100,11 @@ class SaveUtils:
                 sort=[("_id", -1)],
                 projection={"_id": 1}
             )
-            max_id = max_id_doc["_id"] if max_id_doc else id_fallback
+            # Convert string _id to int if needed
+            if max_id_doc:
+                max_id = int(max_id_doc["_id"]) if isinstance(max_id_doc["_id"], str) else max_id_doc["_id"]
+            else:
+                max_id = id_fallback
             
             if not urls:
                 return [], max_id
@@ -151,33 +155,46 @@ class SaveUtils:
             
             inserted_count = 0
             updated_count = 0
-            current_new_id = _id
+            # Convert _id to int for incrementing, will convert back to string when saving
+            current_new_id = int(_id) if isinstance(_id, str) else _id
+            required_field = [
+                'link',
+                'room_type', 
+                'map_lat', 
+                'map_lng', 
+                'image_url_3', 
+                'floors', 
+                'floor_no'
+            ]
             
             for result in results:
-                link = result.get("link")
-                if not link:
-                    logger.warning("Result missing 'link' field, skipping")
+                missing = [f for f in required_field if f not in result]
+                if missing:
+                    print(f"Bỏ qua vì thiếu các field: {missing}")
                     continue
+                
+                link = result.get("link")
                 
                 # Kiểm tra URL đã tồn tại chưa
                 existing_doc = await collection.find_one({"link": link})
                 
                 if existing_doc:
                     # URL đã tồn tại → UPDATE (giữ nguyên _id cũ)
+                    existing_id = str(existing_doc["_id"])
                     document = {
                         **result,
                         "created_date": time.time(),
-                        "_id": existing_doc["_id"]  # Giữ nguyên _id cũ
+                        "_id": existing_id   # Giữ nguyên _id cũ
                     }
-                    await collection.replace_one({"_id": existing_doc["_id"]}, document)
+                    await collection.replace_one({"_id": existing_id}, document)
                     updated_count += 1
                 else:
                     # URL mới → INSERT với _id mới
-                    current_new_id += 1
+                    current_new_id += 1  # Increment as integer
                     document = {
                         **result,
                         "created_date": time.time(),
-                        "_id": str(current_new_id)
+                        "_id": str(current_new_id)  # Convert to string for MongoDB
                     }
                     await collection.insert_one(document)
                     inserted_count += 1

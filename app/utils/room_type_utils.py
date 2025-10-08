@@ -81,7 +81,7 @@ room_type_mapping = {
 
 def extract_room_type(room_type):
     if not room_type:
-        return None
+        return '1R'
     
     # Lấy phần đầu tiên gồm chữ, số hoặc chữ Unicode
     match = re.match(r'^[^\W_]+', room_type, re.UNICODE)

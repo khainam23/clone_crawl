@@ -64,7 +64,8 @@ class EnhancedPropertyCrawler:
         self, 
         urls: List[str], 
         batch_size: int = 10,
-        on_batch_complete: Optional[Callable[[List[Dict[str, Any]], int, int], Any]] = None
+        on_batch_complete: Optional[Callable[[List[Dict[str, Any]], int, int], Any]] = None,
+        max_consecutive_failures: int = 30
     ) -> List[Dict[str, Any]]:
         """
         Crawl nhiều properties với batch processing và crawler pool để tránh timeout và overhead
@@ -74,10 +75,12 @@ class EnhancedPropertyCrawler:
             batch_size: Number of URLs to crawl simultaneously (default: 10)
             on_batch_complete: Optional callback function được gọi sau mỗi batch
                              Nhận params: (batch_results, batch_num, total_batches)
+            max_consecutive_failures: Maximum consecutive failures before stopping (default: 30)
         """
         print(f"🏘️ Crawling {len(urls)} properties in batches of {batch_size}...")
         
         all_results = []
+        consecutive_failures = 0
         
         # Khởi tạo HTTP session pool với kích thước bằng batch_size
         async with CrawlerPool(pool_size=batch_size, custom_extractor_factory=self.custom_extractor_factory) as pool:
@@ -95,7 +98,7 @@ class EnhancedPropertyCrawler:
                 # Chạy parallel với error handling cho batch này
                 batch_results = await asyncio.gather(*tasks, return_exceptions=True)
                 
-                # Xử lý exceptions cho batch
+                # Xử lý exceptions cho batch và đếm consecutive failures
                 processed_batch_results = []
                 for j, result in enumerate(batch_results):
                     if isinstance(result, Exception):
@@ -103,8 +106,26 @@ class EnhancedPropertyCrawler:
                             'error': str(result),
                             'url': batch_urls[j]
                         })
+                        consecutive_failures += 1
                     else:
+                        # Kiểm tra nếu result có 'error' key (từ _crawl_single_property)
+                        if 'error' in result:
+                            consecutive_failures += 1
+                        else:
+                            # Reset counter khi có success
+                            if consecutive_failures > 0:
+                                print(f"✅ Success after {consecutive_failures} consecutive failures - counter reset")
+                            consecutive_failures = 0
+                        
                         processed_batch_results.append(result)
+                    
+                    # Kiểm tra threshold sau mỗi result
+                    if consecutive_failures >= max_consecutive_failures:
+                        print(f"🛑 Stopping crawl: {consecutive_failures} consecutive failures reached!")
+                        print(f"⚠️ Crawled {len(all_results)} out of {len(urls)} URLs before stopping")
+                        return all_results
+                    elif consecutive_failures > 0 and consecutive_failures % 5 == 0:
+                        print(f"⚠️ Warning: {consecutive_failures} consecutive failures (max: {max_consecutive_failures})")
                 
                 all_results.extend(processed_batch_results)
                 
