@@ -15,6 +15,7 @@ def fetch_coordinates_from_google_maps(address: str) -> Optional[Tuple[float, fl
         google_maps_url = f"https://www.google.co.jp/maps/place/{encoded_address}"
 
         chrome_options = Options()
+        chrome_options.binary_location = "/usr/local/bin/chrome/chrome"
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
@@ -25,7 +26,8 @@ def fetch_coordinates_from_google_maps(address: str) -> Optional[Tuple[float, fl
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--disable-notifications")
 
-        service = Service(ChromeDriverManager().install())
+        # service = Service(ChromeDriverManager().install())
+        service = Service("/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=chrome_options)
 
         driver.set_page_load_timeout(15)

@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     # STATION
     STATION_URL: str = 'https://bmatehouse.com/api/routes/get_by_position'
     MAX_STATIONS: int = 5
+    
+    # Job
+    HOUR_MITSUI: int = 8
+    MINUTE_MITSUI: int = 0
+    HOUR_TOKYO: int = 8
+    MINUTE_TOKYO: int = 0 
 
     
     class Config:

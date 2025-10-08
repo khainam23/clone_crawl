@@ -15,7 +15,7 @@ def extract_floor_info(floor_text: str) -> Dict[str, int]:
     Returns:
         Dictionary with floor_no and floors
     """
-    result = {'floor_no': 1, 'floors': 1}
+    result = {'floor_no': 0, 'floors': 1}
     
     if not floor_text:
         return result

@@ -108,11 +108,11 @@ class EnhancedPropertyCrawler:
                         })
                         consecutive_failures += 1
                     else:
-                        # Kiểm tra nếu result có 'error' key (từ _crawl_single_property)
-                        if 'error' in result:
+                        # Kiểm tra nếu result có 'error' key (crawl failed)
+                        if isinstance(result, dict) and 'error' in result:
                             consecutive_failures += 1
                         else:
-                            # Reset counter khi có success
+                            # Reset counter chỉ khi có success thật sự
                             if consecutive_failures > 0:
                                 print(f"✅ Success after {consecutive_failures} consecutive failures - counter reset")
                             consecutive_failures = 0
