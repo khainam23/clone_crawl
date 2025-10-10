@@ -149,7 +149,7 @@ class PropertyDataExtractor:
         if match:
             data.update({
                 'building_name_ja': match.group(1).strip(),
-                'floor_no': int(match.group(2)),
+                'floor_no': int(match.group(2)) if match.group(2) else 1,
                 'unit_no': int(match.group(3))
             })
         else:

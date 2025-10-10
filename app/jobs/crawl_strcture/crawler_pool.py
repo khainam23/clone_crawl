@@ -7,7 +7,6 @@ import aiohttp
 from typing import Optional, Callable, List
 from app.core.config import CrawlerConfig
 from .custom_rules import CustomExtractor
-from .proxy_manager import ProxyManager
 import uuid
 
 class CrawlerPool:
@@ -19,8 +18,7 @@ class CrawlerPool:
     def __init__(
         self, 
         pool_size: int,
-        custom_extractor_factory: Optional[Callable[[], CustomExtractor]] = None,
-        proxy_manager: Optional[ProxyManager] = None
+        custom_extractor_factory: Optional[Callable[[], CustomExtractor]] = None
     ):
         """
         Initialize CrawlerPool (HTTP Session Pool)
@@ -28,12 +26,10 @@ class CrawlerPool:
         Args:
             pool_size: Số lượng session instances trong pool (thường bằng BATCH_SIZE)
             custom_extractor_factory: Optional factory function to create custom extractor
-            proxy_manager: Optional ProxyManager instance for proxy rotation
         """
         self.pool_size = pool_size
         self.config = CrawlerConfig()
         self.custom_extractor_factory = custom_extractor_factory
-        self.proxy_manager = proxy_manager
         self._instance_id = str(uuid.uuid4())[:8]  # Debug: unique ID cho mỗi instance
         
         # Pool của các HTTP sessions
@@ -70,11 +66,6 @@ class CrawlerPool:
                 sock_read=self.config.get_timeout()
             )
             
-            # Lấy proxy nếu có proxy manager
-            current_proxy = None
-            if self.proxy_manager and self.proxy_manager.has_proxies():
-                current_proxy = self.proxy_manager.get_next_proxy()
-            
             for i in range(self.pool_size):
                 try:
                     session = aiohttp.ClientSession(
@@ -83,8 +74,6 @@ class CrawlerPool:
                         timeout=timeout,
                         connector_owner=False  # Connector được quản lý bởi pool
                     )
-                    # Lưu proxy info vào session để tracking
-                    session._proxy = current_proxy
                     self._sessions.append(session)
                     await self._available_sessions.put(session)
                     print(f"✅ [{self._instance_id}] Session {i+1}/{self.pool_size} initialized")
@@ -116,61 +105,6 @@ class CrawlerPool:
             session: aiohttp.ClientSession instance to release
         """
         await self._available_sessions.put(session)
-    
-    async def change_proxy(self):
-        """
-        Thay đổi proxy cho tất cả sessions trong pool
-        Đóng tất cả sessions cũ và tạo lại với proxy mới
-        """
-        if not self.proxy_manager or not self.proxy_manager.has_proxies():
-            print(f"⚠️ [{self._instance_id}] No proxy manager or proxies available")
-            return
-        
-        async with self._lock:
-            print(f"🔄 [{self._instance_id}] Changing proxy for all sessions...")
-            
-            # Lấy proxy mới
-            new_proxy = self.proxy_manager.get_next_proxy()
-            
-            # Đóng tất cả sessions cũ
-            for i, session in enumerate(self._sessions):
-                try:
-                    await session.close()
-                except Exception as e:
-                    print(f"⚠️ [{self._instance_id}] Error closing session {i+1}: {e}")
-            
-            # Clear sessions list và queue
-            self._sessions.clear()
-            while not self._available_sessions.empty():
-                try:
-                    self._available_sessions.get_nowait()
-                except asyncio.QueueEmpty:
-                    break
-            
-            # Tạo timeout config
-            timeout = aiohttp.ClientTimeout(
-                total=self.config.get_timeout(),
-                connect=10,
-                sock_read=self.config.get_timeout()
-            )
-            
-            # Tạo lại sessions với proxy mới
-            for i in range(self.pool_size):
-                try:
-                    session = aiohttp.ClientSession(
-                        headers=self.config.get_headers(),
-                        connector=self._connector,
-                        timeout=timeout,
-                        connector_owner=False
-                    )
-                    # Lưu proxy info vào session
-                    session._proxy = new_proxy
-                    self._sessions.append(session)
-                    await self._available_sessions.put(session)
-                except Exception as e:
-                    print(f"❌ [{self._instance_id}] Failed to recreate session {i+1}: {e}")
-            
-            print(f"✅ [{self._instance_id}] All sessions recreated with new proxy: {new_proxy}")
     
     async def close(self):
         """
