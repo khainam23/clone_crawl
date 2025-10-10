@@ -2,8 +2,9 @@
 Enhanced Property Crawler - Class chính
 """
 
-import asyncio
+import asyncio, time, gc
 from typing import Dict, List, Any, Optional, Callable
+
 
 from .property_extractor import PropertyExtractor
 from .custom_rules import CustomExtractor
@@ -79,7 +80,6 @@ class EnhancedPropertyCrawler:
         """
         print(f"🏘️ Crawling {len(urls)} properties in batches of {batch_size}...")
         
-        all_results = []
         consecutive_failures = 0
         
         # Khởi tạo HTTP session pool với kích thước bằng batch_size
@@ -121,13 +121,11 @@ class EnhancedPropertyCrawler:
                     
                     # Kiểm tra threshold sau mỗi result
                     if consecutive_failures >= max_consecutive_failures:
-                        print(f"🛑 Stopping crawl: {consecutive_failures} consecutive failures reached!")
-                        print(f"⚠️ Crawled {len(all_results)} out of {len(urls)} URLs before stopping")
-                        return all_results
+                        print(f"🛑 Crawl: {consecutive_failures} consecutive failures reached!")
+                        consecutive_failures = 0
+                        time.sleep(60 * 5)  # Delay thêm 5 phút trước khi tiếp tục crawl
                     elif consecutive_failures > 0 and consecutive_failures % 5 == 0:
                         print(f"⚠️ Warning: {consecutive_failures} consecutive failures (max: {max_consecutive_failures})")
-                
-                all_results.extend(processed_batch_results)
                 
                 # Gọi callback sau khi hoàn thành batch (nếu có)
                 if on_batch_complete:
@@ -135,6 +133,13 @@ class EnhancedPropertyCrawler:
                         await on_batch_complete(processed_batch_results, batch_num, total_batches)
                     except Exception as e:
                         print(f"⚠️ Error in batch callback: {e}")
+                        
+                # Thêm garbage collection rõ ràng sau mỗi batch
+                gc.collect()
+                
+                # Xóa kết quả batch để giải phóng bộ nhớ
+                processed_batch_results.clear()
+                batch_results = None
                 
                 # Thêm delay giữa các batches để tránh quá tải server
                 if i + batch_size < len(urls):  # Không delay sau batch cuối
@@ -142,4 +147,3 @@ class EnhancedPropertyCrawler:
                     await asyncio.sleep(settings.CRAWLER_DELAY)
         
         print(f"✅ Completed crawling all {len(urls)} properties!")
-        return all_results

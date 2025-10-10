@@ -9,7 +9,6 @@ class CoordinateConverter:
     """Handles Japanese address parsing"""
     
     @staticmethod
-    @lru_cache(maxsize=128)
     def compile_regex(pattern: str, flags: int = re.DOTALL | re.IGNORECASE) -> re.Pattern:
         """Cache compiled regex patterns for better performance"""
         return re.compile(pattern, flags)

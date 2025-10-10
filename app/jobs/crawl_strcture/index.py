@@ -71,7 +71,7 @@ async def crawl_pages(
     
     try:
         # Crawl với callback để lưu sau mỗi batch
-        results = await crawler.crawl_multiple_properties(
+        await crawler.crawl_multiple_properties(
             urls, 
             batch_size=batch_size,
             on_batch_complete=save_batch_to_mongo,

@@ -18,9 +18,14 @@ from app.jobs.mitsui_crawl_page.coordinate_converter import CoordinateConverter
 from app.jobs.mitsui_crawl_page.constants import DEFAULT_AMENITIES
 from app.utils.location_utils import get_district_info
 from app.utils.room_type_utils import extract_room_type
+from app.utils.translate_utils import translate_ja_to_en
 
 class PropertyDataExtractor:
     """Handles extraction of property data from HTML"""
+    
+    # Tạo thread pool với 1 worker để tránh tràn RAM khi chạy nhiều Chrome instances
+    # Chrome headless tốn ~150-300MB RAM mỗi instance
+    EXECUTOR = ThreadPoolExecutor(max_workers=1)
     
     def __init__(self):
         self.html_processor = HtmlProcessor()
@@ -51,12 +56,12 @@ class PropertyDataExtractor:
             
             # Run sync Selenium in thread pool to avoid event loop issues
             loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                result = await loop.run_in_executor(
-                    executor, 
-                    fetch_coordinates_from_google_maps, 
-                    address
-                )
+            
+            result = await loop.run_in_executor(
+                self.EXECUTOR, 
+                fetch_coordinates_from_google_maps, 
+                address
+            )
             
             if result:
                 lat, lng = result
@@ -149,6 +154,8 @@ class PropertyDataExtractor:
             })
         else:
             data['building_name_ja'] = h1_text
+            
+        data['building_name_en'] = translate_ja_to_en(text = data['building_name_ja'])
 
     def extract_available_from(self, data: Dict[str, Any], html: str):
         """Extract available from date"""

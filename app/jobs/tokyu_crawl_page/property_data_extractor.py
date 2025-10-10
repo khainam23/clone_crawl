@@ -14,6 +14,7 @@ from app.jobs.tokyu_crawl_page.constants import DEFAULT_AMENITIES
 from app.services.station_service import Station_Service
 from app.utils.building_type_utils import extract_building_type
 from app.utils.room_type_utils import extract_room_type
+from app.utils.translate_utils import translate_ja_to_en
 
 
 class PropertyDataExtractor:
@@ -56,6 +57,7 @@ class PropertyDataExtractor:
         
         if building_name := self._get_dt_dd('物件名'):
             data['building_name_ja'] = building_name
+            data['building_name_en'] = translate_ja_to_en(text = data['building_name_ja'])
         
         if building_type := self._get_dt_dd('種別'):
             data['building_type'] = extract_building_type(building_type)
@@ -221,8 +223,11 @@ class PropertyDataExtractor:
         data['numeric_agency'] = int(1.1 * monthly_rent)
         
         if insurance_text := self._get_td('保険料'):
-            if (fire_insurance_amount := extract_numeric_value(insurance_text)) and fire_insurance_amount > 0:
-                data['fire_insurance'] = fire_insurance_amount * total_monthly
+            # Extract number with comma support (e.g., "16,550円 2年" -> 16550)
+            insurance_match = re.search(r'([\d,]+)', insurance_text)
+            if insurance_match:
+                fire_insurance_amount = int(insurance_match.group(1).replace(',', ''))
+                data['fire_insurance'] = fire_insurance_amount if fire_insurance_amount > 0 else 0
             else:
                 data['fire_insurance'] = 0
         else:

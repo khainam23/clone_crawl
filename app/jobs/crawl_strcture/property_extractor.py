@@ -52,17 +52,26 @@ class PropertyExtractor:
     async def _process_url(self, url: str, session: aiohttp.ClientSession) -> Dict[str, Any]:
         """Xử lý fetch và extract data từ URL"""
         success, html_content, error_msg = await self._fetch_html(url, session)
-        
         if not success:
             PropertyUtils.log_crawl_error(url, error_msg)
             return PropertyUtils.create_crawl_result(error=error_msg)
-        
-        # Extract và flatten data
-        extracted_data = await self._extract_comprehensive_data(url, html_content)
-        flattened_data = self._flatten_nested_data(extracted_data)
-        
-        PropertyUtils.log_crawl_success(url, flattened_data)
-        return PropertyUtils.create_crawl_result(property_data=flattened_data)
+        try:
+            
+            # Extract và flatten data
+            extracted_data = await self._extract_comprehensive_data(url, html_content)
+            
+            html_content = None
+            
+            flattened_data = self._flatten_nested_data(extracted_data)
+            
+            PropertyUtils.log_crawl_success(url, flattened_data)
+            return PropertyUtils.create_crawl_result(property_data=flattened_data)
+        finally:
+            # Đảm bảo nội dung HTML được giải phóng
+            html_content = None
+            # Bắt buộc garbage collection
+            import gc
+            gc.collect()
     
     async def _extract_comprehensive_data(self, url: str, html_content: str) -> Dict[str, Any]:
         """Extract comprehensive property data từ HTML content"""
