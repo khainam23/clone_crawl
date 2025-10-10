@@ -19,9 +19,9 @@ def ftapi():
     
     lan_src = 'ja'
     lan_dl = 'en'
-    text = "東京都練馬区桜台三丁目２０番３号"
+    text = "ル・シュクレ永福"
     call_api = requests.get(f'https://ftapi.pythonanywhere.com/translate?sl={lan_src}&dl={lan_dl}&text={text}')
-    print(call_api.json())
+    print(call_api.json().get('destination-text'))
     
 def model():
     # cài nặng, nhiều
@@ -41,10 +41,40 @@ def model():
     text = "東京都練馬区桜台三丁目２０番３号"
     print(translate(text))
 
+from app.db.mongodb import connect_to_mongo, close_mongo_connection, get_collection
+from app.utils.translate_utils import translate_ja_to_en
+
+# Bộ nhớ cache tạm trong RAM
+translated_cache = {}
+
+async def run():
+    await connect_to_mongo()
+    collection_mitsui = get_collection('room_mitsui')
+    
+    async for document in collection_mitsui.find({'building_name_en': {'$exists': False}}):
+        building_name_ja = document.get('building_name_ja')
+        if not building_name_ja:
+            continue
+
+        # Kiểm tra cache trước
+        if building_name_ja in translated_cache:
+            building_name_en = translated_cache[building_name_ja]
+        else:
+            building_name_en = translate_ja_to_en(text=building_name_ja)
+            translated_cache[building_name_ja] = building_name_en  # Lưu vào cache
+
+        print(f"Document id: {document['_id']} - {building_name_ja} -> {building_name_en}")
+
+        if building_name_en:
+            await collection_mitsui.update_one(
+                {'_id': document['_id']},
+                {'$set': {'building_name_en': building_name_en}}
+            )
+        
+    await close_mongo_connection()
+
+import asyncio
+
 if __name__ == '__main__':
-    old_time = time.time()
-    # gg_translate()
-    ftapi()
-    # model()
-    new_time = time.time()
-    print(f'need:{new_time-old_time}s')
+    asyncio.run(run())
+    # ftapi()

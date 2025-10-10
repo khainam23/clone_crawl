@@ -9,20 +9,31 @@ from typing import Dict, List, Any, Optional, Callable
 from .property_extractor import PropertyExtractor
 from .custom_rules import CustomExtractor
 from .crawler_pool import CrawlerPool
+from .proxy_manager import ProxyManager
 from app.core.config import settings
 
 class EnhancedPropertyCrawler:
-    def __init__(self, custom_extractor_factory: Optional[Callable[[], CustomExtractor]] = None):
+    def __init__(self, custom_extractor_factory: Optional[Callable[[], CustomExtractor]] = None, use_proxy: bool = False):
         """
         Initialize EnhancedPropertyCrawler
         
         Args:
             custom_extractor_factory: Optional factory function to create custom extractor
                                     If None, will use basic extractor
+            use_proxy: Whether to use proxy rotation (default: False)
         """
         self.extractor = PropertyExtractor(custom_extractor_factory)
         self.custom_extractor_factory = custom_extractor_factory
         self.pool: Optional[CrawlerPool] = None
+        self.use_proxy = use_proxy
+        self.proxy_manager: Optional[ProxyManager] = None
+        
+        # Khởi tạo proxy manager nếu cần
+        if self.use_proxy:
+            self.proxy_manager = ProxyManager()
+            if not self.proxy_manager.has_proxies():
+                print("⚠️ Warning: Proxy enabled but no proxies loaded. Continuing without proxy.")
+                self.use_proxy = False
 
     async def _crawl_single_property(self, url: str, verbose: bool = True, pool: Optional[CrawlerPool] = None) -> Dict[str, Any]:
         """
@@ -83,7 +94,11 @@ class EnhancedPropertyCrawler:
         consecutive_failures = 0
         
         # Khởi tạo HTTP session pool với kích thước bằng batch_size
-        async with CrawlerPool(pool_size=batch_size, custom_extractor_factory=self.custom_extractor_factory) as pool:
+        async with CrawlerPool(
+            pool_size=batch_size, 
+            custom_extractor_factory=self.custom_extractor_factory,
+            proxy_manager=self.proxy_manager if self.use_proxy else None
+        ) as pool:
             # Chia URLs thành các batches
             for i in range(0, len(urls), batch_size):
                 batch_urls = urls[i:i + batch_size]
@@ -122,8 +137,18 @@ class EnhancedPropertyCrawler:
                     # Kiểm tra threshold sau mỗi result
                     if consecutive_failures >= max_consecutive_failures:
                         print(f"🛑 Crawl: {consecutive_failures} consecutive failures reached!")
+                        
+                        # Thay đổi proxy nếu đang sử dụng proxy
+                        if self.use_proxy and self.proxy_manager:
+                            print(f"🔄 Changing proxy due to consecutive failures...")
+                            await pool.change_proxy()
+                            print(f"✅ Proxy changed. Continuing crawl...")
+                        else:
+                            # Nếu không dùng proxy, delay 5 phút như cũ
+                            print(f"⏳ Waiting 5 minutes before continuing...")
+                            time.sleep(60 * 5)
+                        
                         consecutive_failures = 0
-                        time.sleep(60 * 5)  # Delay thêm 5 phút trước khi tiếp tục crawl
                     elif consecutive_failures > 0 and consecutive_failures % 5 == 0:
                         print(f"⚠️ Warning: {consecutive_failures} consecutive failures (max: {max_consecutive_failures})")
                 

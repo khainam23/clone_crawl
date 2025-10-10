@@ -17,7 +17,9 @@ class PropertyExtractor:
     async def _fetch_html(self, url: str, session: aiohttp.ClientSession) -> tuple[bool, str, str]:
         """Fetch HTML từ URL (không retry). Returns: (success, html_content, error_message)"""
         try:
-            async with session.get(url) as response:
+            # Lấy proxy từ session nếu có
+            proxy = getattr(session, '_proxy', None)
+            async with session.get(url, proxy=proxy) as response:
                 if response.status == 200:
                     return (True, await response.text(), "")
                 return (False, "", f"HTTP {response.status}")

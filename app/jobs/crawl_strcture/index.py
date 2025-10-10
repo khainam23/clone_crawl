@@ -12,7 +12,8 @@ async def crawl_pages(
     id_mongo: int = 0, 
     collection_name: str = 'table_page',
     custom_extractor_factory: Optional[Callable[[], CustomExtractor]] = None,
-    max_consecutive_failures: int = 30
+    max_consecutive_failures: int = 30,
+    use_proxy: bool = True
 ):
     """
     Crawl multiple property pages with batch-wise MongoDB saving
@@ -24,6 +25,7 @@ async def crawl_pages(
         collection_name: MongoDB collection name
         custom_extractor_factory: Optional factory function to create custom extractor
         max_consecutive_failures: Maximum consecutive failures before stopping (default: 30)
+        use_proxy: Whether to use proxy rotation from http.txt file (default: False)
     """
     # Filter urls
     urls, id_mongo = await SaveUtils.filter_urls(urls, collection_name, id_mongo)
@@ -66,7 +68,7 @@ async def crawl_pages(
         except Exception as e:
             print(f"❌ Error saving batch {batch_num}/{total_batches} to MongoDB: {e}")
 
-    crawler = EnhancedPropertyCrawler(custom_extractor_factory)
+    crawler = EnhancedPropertyCrawler(custom_extractor_factory, use_proxy=use_proxy)
     print("\n=== 😶‍🌫️☀️😁😂😑🤷‍♂️ ===")
     
     try:

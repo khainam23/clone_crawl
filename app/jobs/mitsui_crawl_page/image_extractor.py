@@ -1,7 +1,7 @@
 """
 Image extraction utilities for Mitsui crawling
 """
-import requests
+import requests, gc
 from typing import Dict, Any, Tuple, List
 
 from app.utils.html_processor_utils import HtmlProcessor
@@ -40,7 +40,8 @@ class ImageExtractor:
                 return exterior_images, floorplan_images, interior_images
             
             gallery_data = response.json()
-            for item in gallery_data:
+            max_needed = settings.MAX_IMAGES + 1
+            for item in gallery_data[:max_needed]:
                 filename = item.get("filename", "")
                 if not filename:
                     continue
@@ -50,6 +51,10 @@ class ImageExtractor:
                     exterior_images.append(filename)
                 else:
                     interior_images.append(filename)
+            
+            gallery_data = None
+            response = None
+            gc.collect()
                     
         except requests.exceptions.Timeout:
             print("⏰ Gallery request timeout")
@@ -92,6 +97,12 @@ class ImageExtractor:
                         if len(images_list) >= max_images:
                             break
 
+            # Giải phóng bộ nhớ
+            exterior_images = None
+            floorplan_images = None
+            interior_images = None
+            used_names = None
+            gc.collect()
         except Exception:
             pass  # Silent fail for batch processing
 
