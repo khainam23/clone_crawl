@@ -77,7 +77,7 @@ class CustomExtractorFactory:
             property_extractor.set_default_amenities,    # 10. Default amenities
             property_extractor.extract_money,            # 11. Financial calculations
             map_extractor.extract_map,                   # 12. Map coordinates
-            # property_extractor.extract_station,          # 13. Station info
+            property_extractor.extract_station,          # 13. Station info
             property_extractor.cleanup_temp_fields,      # 14. Cleanup
         ]
         

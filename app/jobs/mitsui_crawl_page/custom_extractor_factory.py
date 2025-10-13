@@ -68,7 +68,7 @@ class CustomExtractorFactory:
             property_extractor.process_pricing,       # 5. Calculate pricing
             property_extractor.extract_deposit_key_info, # 6. Extract deposit/key (needs total_monthly)
             property_extractor.get_info_district,     # 7. Get district info (needs lat/lng)
-            # property_extractor.extract_station,      # 8. Extract station service
+            property_extractor.extract_station,      # 8. Extract station service
             property_extractor.cleanup_temp_fields,   # 9. Cleanup temporary fields
         ]
         

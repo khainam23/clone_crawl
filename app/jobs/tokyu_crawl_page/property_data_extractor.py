@@ -222,17 +222,6 @@ class PropertyDataExtractor:
         data['numeric_guarantor_max'] = total_monthly
         data['numeric_agency'] = int(1.1 * monthly_rent)
         
-        if insurance_text := self._get_td('保険料'):
-            # Extract number with comma support (e.g., "16,550円 2年" -> 16550)
-            insurance_match = re.search(r'([\d,]+)', insurance_text)
-            if insurance_match:
-                fire_insurance_amount = int(insurance_match.group(1).replace(',', ''))
-                data['fire_insurance'] = fire_insurance_amount if fire_insurance_amount > 0 else 0
-            else:
-                data['fire_insurance'] = 0
-        else:
-            data['fire_insurance'] = 0
-        
         if discount_text := self._get_td('フリーレント'):
             if (discount_months := extract_months_multiplier(discount_text)) and discount_months > 0:
                 data['numeric_discount'] = int(discount_months * monthly_rent)

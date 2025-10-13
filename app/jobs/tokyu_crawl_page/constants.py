@@ -33,4 +33,5 @@ DEFAULT_AMENITIES = {
     'shower': 'Y',
     'unit_bath': 'Y',
     'western_toilet': 'Y',
+    'fire_insurance': 20000
 }
