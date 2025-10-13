@@ -177,6 +177,7 @@ class SaveUtils:
                 'map_lat', 
                 'map_lng', 
                 'image_url_3', 
+                'station_name_1',
                 'floors', 
                 'floor_no'
             ]
