@@ -5,7 +5,7 @@ import requests
 from typing import Dict, Any, List
 
 from app.utils.http_client_utils import http_client
-from app.core.config import settings
+from app.core.config import settings, CrawlerConfig
 
 
 class StationService:
@@ -23,7 +23,7 @@ class StationService:
             print(f"🚉 Fetching stations: {api_url}")
             
             # Use the existing session for consistency
-            response = http_client.get(api_url, timeout=settings.GALLERY_TIMEOUT)
+            response = http_client.get(api_url, headers=CrawlerConfig.get_headers(), timeout=settings.GALLERY_TIMEOUT)
             
             if response.status_code != 200:
                 print(f"❌ Station API failed: HTTP {response.status_code}")

@@ -188,6 +188,10 @@ class SaveUtils:
                     print(f"Bỏ qua vì thiếu các field: {missing}")
                     continue
                 
+                if result['map_lat'] <= 0 or result['map_lng'] <= 0:
+                    print(f"Bỏ qua vì vị trí không hợp lệ: {result['link']}")
+                    continue
+                
                 link = result.get("link")
                 
                 # Kiểm tra URL đã tồn tại chưa
