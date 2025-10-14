@@ -1,10 +1,10 @@
 """
 Image extraction utilities for Tokyu crawling
 """
+import re
 from typing import Dict, Any
 
 from app.utils.html_processor_utils import htmlProcessor
-from app.utils.http_client_utils import http_client
 from app.jobs.tokyu_crawl_page.constants import BASE_URL
 from app.core.config import settings
 
@@ -16,81 +16,107 @@ class ImageExtractor:
         self.html_processor = htmlProcessor
     
     def extract_images(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
-        """Extract and organize images from HTML - optimized version"""
+        """Extract and organize images from HTML - all images are on the main page"""
         images_list = []
         max_images = settings.MAX_IMAGES
         used_filenames = set()
         
+        print(f"[ImageExtractor] Starting image extraction, max_images: {max_images}")
+        
         try:
-            # Tìm link gallery từ li.print_album>a
-            gallery_link_path = self.html_processor.find(
-                r'<li[^>]*class="[^"]*print_album[^"]*"[^>]*>.*?<a[^>]*href="([^"]+)"', 
-                html
+            # Extract floorplan from #side_roomplan > p > a > img
+            floorplan_pattern = self.html_processor.compile_regex(
+                r'<[^>]*id="side_roomplan"[^>]*>(.*?)</(?:div|section|aside)',
+                re.DOTALL
             )
+            floorplan_section = floorplan_pattern.search(html)
             
-            if not gallery_link_path:
-                return data
-                
-            gallery_link = BASE_URL + gallery_link_path
-            
-            # Optimized: reduced timeout, no verbose logging
-            response = http_client.get(
-                gallery_link, 
-                timeout=(3, 7)  # (connect timeout, read timeout)
-            )
-            
-            if response.status_code != 200:
-                return data
-                
-            gallery_html = response.text
-            
-            # Extract exterior (div#mansion_img_album>*>ul>li:first>img)
-            exterior_img = self.html_processor.find(
-                r'<div[^>]*id="mansion_img_album"[^>]*>.*?<ul[^>]*>.*?<li[^>]*>.*?<img[^>]*src="([^"]+)"', 
-                gallery_html
-            )
-            if exterior_img:
-                filename = exterior_img.split('/')[-1]
-                if filename not in used_filenames:
-                    images_list.append({'url': BASE_URL + exterior_img, 'category': 'exterior'})
-                    used_filenames.add(filename)
-                
-            # Extract floorplan (div#room_photo_album >*>ul.clearFix>li:first>img)
-            if len(images_list) < max_images:
+            if floorplan_section:
+                print("[ImageExtractor] Found floorplan section")
+                floorplan_content = floorplan_section.group(1)
                 floorplan_img = self.html_processor.find(
-                    r'<div[^>]*id="room_photo_album"[^>]*>.*?<ul[^>]*class="[^"]*clearFix[^"]*"[^>]*>.*?<li[^>]*>.*?<img[^>]*src="([^"]+)"', 
-                    gallery_html
+                    r'<img[^>]*src="([^"]+)"',
+                    floorplan_content
                 )
                 if floorplan_img:
                     filename = floorplan_img.split('/')[-1]
                     if filename not in used_filenames:
-                        images_list.append({'url': BASE_URL + floorplan_img, 'category': 'floorplan'})
+                        full_url = floorplan_img if floorplan_img.startswith('http') else BASE_URL + floorplan_img
+                        print(f"[ImageExtractor] Added floorplan: {full_url}")
+                        images_list.append({'url': full_url, 'category': 'floorplan'})
                         used_filenames.add(filename)
+                    else:
+                        print(f"[ImageExtractor] Skipped duplicate floorplan: {filename}")
+                else:
+                    print("[ImageExtractor] No floorplan image found in section")
+            else:
+                print("[ImageExtractor] No floorplan section found")
             
-            # Extract interior images (div#common_area_album>*>ul>li>img)
-            remaining_slots = max_images - len(images_list)
-            if remaining_slots > 0:
-                interior_pattern = self.html_processor.compile_regex(
-                    r'<div[^>]*id="common_area_album"[^>]*>.*?<ul[^>]*>(.*?)</ul>'
-                )
-                interior_section = interior_pattern.search(gallery_html)
+            # Extract album_photos section - find content between album_photos and gmap_view
+            album_pattern = self.html_processor.compile_regex(
+                r'<div[^>]*id="album_photos"[^>]*>(.*?)<div[^>]*id="gmap_view"',
+                re.DOTALL
+            )
+            album_section = album_pattern.search(html)
+            print(f"[ImageExtractor] album_photos regex search result: {album_section is not None}")
+            
+            if album_section:
+                print("[ImageExtractor] Found album_photos section")
+                album_content = album_section.group(1)
+                print(f"[ImageExtractor] album_content length: {len(album_content)} chars")
+                print(f"[ImageExtractor] album_content preview (first 500 chars): {album_content[:500]}")
                 
-                if interior_section:
-                    img_pattern = self.html_processor.compile_regex(r'<img[^>]*src="([^"]+)"')
-                    interior_imgs = img_pattern.findall(interior_section.group(1))
+                # Extract exterior from div#m000
+                exterior_img = self.html_processor.find(
+                    r'<div[^>]*id="m000"[^>]*>.*?<img[^>]*src="([^"]+)"',
+                    album_content
+                )
+                if exterior_img and len(images_list) < max_images:
+                    filename = exterior_img.split('/')[-1]
+                    if filename not in used_filenames:
+                        full_url = exterior_img if exterior_img.startswith('http') else BASE_URL + exterior_img
+                        print(f"[ImageExtractor] Added exterior: {full_url}")
+                        images_list.append({'url': full_url, 'category': 'exterior'})
+                        used_filenames.add(filename)
+                    else:
+                        print(f"[ImageExtractor] Skipped duplicate exterior: {filename}")
+                elif exterior_img:
+                    print(f"[ImageExtractor] Skipped exterior (max_images reached): {len(images_list)}/{max_images}")
+                else:
+                    print("[ImageExtractor] No exterior image found")
+                
+                # Extract interior images from div#i00x (i001, i002, i003, etc.)
+                remaining_slots = max_images - len(images_list)
+                print(f"[ImageExtractor] Extracting interior images, remaining slots: {remaining_slots}")
+                if remaining_slots > 0:
+                    # Find all divs with id matching i00x pattern
+                    interior_divs_pattern = self.html_processor.compile_regex(
+                        r'<div[^>]*id="i\d{3}"[^>]*>.*?<img[^>]*src="([^"]+)"',
+                        re.DOTALL
+                    )
+                    interior_imgs = interior_divs_pattern.findall(album_content)
+                    print(f"[ImageExtractor] Found {len(interior_imgs)} interior images")
                     
-                    # Optimized: limit iterations and check duplicates
                     for img_url in interior_imgs[:remaining_slots]:
                         filename = img_url.split('/')[-1]
                         if filename not in used_filenames:
-                            images_list.append({'url': BASE_URL + img_url, 'category': 'interior'})
+                            full_url = img_url if img_url.startswith('http') else BASE_URL + img_url
+                            print(f"[ImageExtractor] Added interior: {full_url}")
+                            images_list.append({'url': full_url, 'category': 'interior'})
                             used_filenames.add(filename)
                             if len(images_list) >= max_images:
+                                print(f"[ImageExtractor] Reached max_images limit: {max_images}")
                                 break
+                        else:
+                            print(f"[ImageExtractor] Skipped duplicate interior: {filename}")
+            else:
+                print("[ImageExtractor] No album_photos section found")
             
-        except Exception:
+        except Exception as e:
+            print(f"[ImageExtractor] Error during extraction: {str(e)}")
             pass  # Silent fail for batch processing
         
+        print(f"[ImageExtractor] Extraction complete. Total images: {len(images_list)}")
         if images_list:
             data['images'] = images_list
             
