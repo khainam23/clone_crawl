@@ -26,40 +26,51 @@ async def crawl_pages(
         max_consecutive_failures: Maximum consecutive failures before stopping (default: 30)
     """
     # Filter urls
-    urls, id_mongo = await SaveUtils.filter_urls(urls, collection_name, id_mongo)
+    urls, available_ids = await SaveUtils.filter_urls(urls, collection_name, id_mongo)
     
     start = datetime.now()
 
     # Tracking variables
-    current_id = id_mongo
     total_saved = 0
     saved_batches = []
+    id_index = 0  # Index để theo dõi vị trí trong available_ids
     
     # Callback function để lưu sau mỗi batch
     async def save_batch_to_mongo(batch_results: List[Dict[str, Any]], batch_num: int, total_batches: int):
-        nonlocal current_id, total_saved
+        nonlocal id_index, total_saved
         
         try:
+            # Lấy slice của available_ids cho batch này
+            batch_size = len(batch_results)
+            batch_ids = available_ids[id_index:id_index + batch_size] if id_index < len(available_ids) else []
+            
             # Lưu batch vào MongoDB
             result = await SaveUtils.save_db_results(
                 batch_results, 
-                _id=current_id, 
+                available_ids=batch_ids, 
                 collection_name=collection_name
             )
             
             if result:
                 saved_count = len(batch_results)
                 total_saved += saved_count
+                
+                # Hiển thị ID range
+                if batch_ids:
+                    id_range = f"{min(batch_ids)} - {max(batch_ids)}" if len(batch_ids) > 1 else str(batch_ids[0])
+                else:
+                    id_range = "auto-generated"
+                
                 saved_batches.append({
                     'batch_num': batch_num,
                     'saved_count': saved_count,
-                    'id_range': f"{current_id + 1} - {current_id + saved_count}"
+                    'id_range': id_range
                 })
                 
-                print(f"✅ Batch {batch_num}/{total_batches}: Saved {saved_count} records (IDs: {current_id + 1} - {current_id + saved_count})")
+                print(f"✅ Batch {batch_num}/{total_batches}: Saved {saved_count} records (IDs: {id_range})")
                 
-                # Cập nhật current_id cho batch tiếp theo
-                current_id += saved_count
+                # Cập nhật id_index cho batch tiếp theo
+                id_index += saved_count
             else:
                 print(f"⚠️ Batch {batch_num}/{total_batches}: No records saved")
                 
@@ -100,6 +111,6 @@ async def crawl_pages(
         Total URLs: {len(urls)}
         Total Saved: {total_saved} records to '{collection_name}'
         Batches Completed: {len(saved_batches)}
-        Final ID: {current_id}
+        Available IDs Used: {id_index}/{len(available_ids)}
         Start: {start:%Y%m%d_%H%M%S} | End: {end:%Y%m%d_%H%M%S} | 🕒 Duration: {duration}
     """)

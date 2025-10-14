@@ -81,6 +81,7 @@ class EnhancedPropertyCrawler:
         print(f"🏘️ Crawling {len(urls)} properties in batches of {batch_size}...")
         
         consecutive_failures = 0
+        consecutive_successes = 0
         
         # Khởi tạo HTTP session pool với kích thước bằng batch_size
         async with CrawlerPool(
@@ -110,15 +111,21 @@ class EnhancedPropertyCrawler:
                             'url': batch_urls[j]
                         })
                         consecutive_failures += 1
+                        consecutive_successes = 0  # Reset success counter khi có failure
                     else:
                         # Kiểm tra nếu result có 'error' key (crawl failed)
                         if isinstance(result, dict) and 'error' in result:
                             consecutive_failures += 1
+                            consecutive_successes = 0  # Reset success counter khi có failure
                         else:
-                            # Reset counter chỉ khi có success thật sự
-                            if consecutive_failures > 0:
-                                print(f"✅ Success after {consecutive_failures} consecutive failures - counter reset")
-                            consecutive_failures = 0
+                            # Tăng success counter
+                            consecutive_successes += 1
+                            
+                            # Chỉ reset failure counter sau 10 lần thành công liên tiếp
+                            if consecutive_successes >= 10:
+                                print(f"✅ 10 consecutive successes achieved - resetting failure counter (was {consecutive_failures})")
+                                consecutive_failures = 0
+                                consecutive_successes = 0  # Reset success counter sau khi đã reset failure
                         
                         processed_batch_results.append(result)
                     
@@ -126,7 +133,7 @@ class EnhancedPropertyCrawler:
                     if consecutive_failures >= max_consecutive_failures:
                         print(f"🛑 Crawl: {consecutive_failures} consecutive failures reached!")
                         print(f"⏳ Waiting 5 minutes before continuing...")
-                        time.sleep(60 * 8)
+                        time.sleep(60 * 5)
                         consecutive_failures = 0
                     elif consecutive_failures > 0 and consecutive_failures % 5 == 0:
                         print(f"⚠️ Warning: {consecutive_failures} consecutive failures (max: {max_consecutive_failures})")

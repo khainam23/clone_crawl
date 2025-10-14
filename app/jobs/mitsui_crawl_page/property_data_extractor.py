@@ -1,11 +1,9 @@
 """Property data extraction utilities for Mitsui crawling"""
 import re
 import sys
-import asyncio
 import calendar
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, date
-from concurrent.futures import ThreadPoolExecutor
 
 from app.utils.html_processor_utils import HtmlProcessor
 from app.utils.direction_utils import extract_direction_info
@@ -22,10 +20,6 @@ from app.utils.translate_utils import translate_ja_to_en
 
 class PropertyDataExtractor:
     """Handles extraction of property data from HTML"""
-    
-    # Tạo thread pool với 1 worker để tránh tràn RAM khi chạy nhiều Chrome instances
-    # Chrome headless tốn ~150-300MB RAM mỗi instance
-    EXECUTOR = ThreadPoolExecutor(max_workers=1)
     
     def __init__(self):
         self.html_processor = HtmlProcessor()
@@ -45,7 +39,7 @@ class PropertyDataExtractor:
         content = self._dt_dd_cache.get(dt_label)
         return self.html_processor.clean_html(content) if content else None
     
-    async def _parse_coordinates(self, address: str, data: Dict[str, Any]) -> None:
+    def _parse_coordinates(self, address: str, data: Dict[str, Any]) -> None:
         """Fetch coordinates from Google Maps and update data directly"""
         if not address:
             print("⚠️ No address provided for coordinate fetching")
@@ -54,14 +48,8 @@ class PropertyDataExtractor:
         try:
             print(f"🌐 Fetching coordinates from Google Maps for: {address}")
             
-            # Run sync Selenium in thread pool to avoid event loop issues
-            loop = asyncio.get_event_loop()
-            
-            result = await loop.run_in_executor(
-                self.EXECUTOR, 
-                fetch_coordinates_from_google_maps, 
-                address
-            )
+            # Gọi trực tiếp synchronous giống Tokyu để tránh tràn RAM
+            result = fetch_coordinates_from_google_maps(address)
             
             if result:
                 lat, lng = result
@@ -116,14 +104,14 @@ class PropertyDataExtractor:
         
         return data
     
-    async def convert_coordinates(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
+    def convert_coordinates(self, data: Dict[str, Any], html: str) -> Dict[str, Any]:
         """Fetch coordinates from Google Maps using address from data"""
         # Get address from data (already extracted by extract_address_info)
         address = data.get('address')
         
         # Fetch coordinates and update data directly
         if address:
-            await self._parse_coordinates(address, data)
+            self._parse_coordinates(address, data)
         
         return data
     

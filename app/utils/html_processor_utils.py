@@ -30,7 +30,7 @@ class HtmlProcessor:
         html_tag_regex = cls.compile_regex(r'<[^>]+>')
         cleaned = html_tag_regex.sub('', text).strip()
         # Clean HTML entities
-        cleaned = cleaned.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+        cleaned = cleaned.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('\xa0', ' ').strip()
         return cleaned
     
     @classmethod

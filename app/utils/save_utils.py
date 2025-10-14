@@ -80,9 +80,9 @@ class SaveUtils:
             return None
         
     @staticmethod
-    async def filter_urls(urls: List[str], collection_name: Optional[str] = "crawl_results", id_fallback: Optional[int] = 0) -> tuple[List[str], int]:
+    async def filter_urls(urls: List[str], collection_name: Optional[str] = "crawl_results", id_fallback: Optional[int] = 0) -> tuple[List[str], List[int]]:
         """
-        Lọc ra các URLs chưa tồn tại trong collection hoặc đã quá hạn cập nhật và lấy ID lớn nhất
+        Lọc ra các URLs chưa tồn tại trong collection hoặc đã quá hạn cập nhật và lấy danh sách ID khả dụng
         
         Ngoài ra phải loại bỏ các url trong collection không còn tồn tại khi trong các url crawl về tránh tình trạng nhà đã được đóng
         
@@ -92,7 +92,7 @@ class SaveUtils:
             id_fallback: ID mặc định nếu collection rỗng
             
         Returns:
-            Tuple gồm (danh sách URLs chưa tồn tại hoặc cần cập nhật, ID MongoDB lớn nhất hiện tại)
+            Tuple gồm (danh sách URLs chưa tồn tại hoặc cần cập nhật, danh sách ID khả dụng để sử dụng)
         """
         try:
             collection = get_collection(collection_name)
@@ -109,7 +109,7 @@ class SaveUtils:
                 max_id = id_fallback
             
             if not urls:
-                return [], max_id
+                return [], []
             
             # Tạo index cho field 'link' nếu chưa có (để tăng tốc độ query)
             try:
@@ -147,30 +147,53 @@ class SaveUtils:
                 logger.info(f"Removed {deleted_count} URLs no longer available in crawl results")
                 print(f"🗑️ Removed {deleted_count} closed/unavailable listings from collection")
             
-            # Tính số URLs outdated để logging
-            outdated_count = len([url for url in urls if url not in fresh_urls_set and url in urls]) - (len(urls) - len(fresh_urls_set))
+            # Tìm các ID gaps (ID bị thiếu) để tái sử dụng
+            available_ids = []
+            if len(new_urls) > 0:
+                existing_ids = await collection.distinct("_id")
+                existing_ids_set = set(int(i) for i in existing_ids)
+
+                max_id = max(existing_ids_set) if existing_ids_set else id_fallback
+                needed = len(new_urls)
+
+                # Tìm các ID còn trống (gap)
+                all_ids = set(range(id_fallback, max_id + 1))
+                available_ids = list(all_ids - existing_ids_set)
+
+                # Cắt vừa đủ số lượng cần thiết
+                available_ids = available_ids[:needed]
+
+                # Nếu chưa đủ, thêm các ID mới
+                if len(available_ids) < needed:
+                    available_ids.extend(range(max_id + 1, max_id + 1 + (needed - len(available_ids))))
             
-            logger.info(f"Filtered URLs: {len(urls)} total, {len(fresh_urls_set)} fresh, {len(new_urls)} to process | Max ID: {max_id}")
-            print(f"🔍 Filtered URLs: {len(urls)} total, {len(fresh_urls_set)} fresh, {len(new_urls)} to process | Max ID: {max_id}")
+            gaps_count = len([id for id in available_ids if id <= max_id])
+            new_ids_count = len([id for id in available_ids if id > max_id])
             
-            return new_urls, max_id
+            print(f"🔍 Filtered URLs: {len(urls)} total, {len(fresh_urls_set)} fresh, {len(new_urls)} to process | 🆔 Available IDs: {gaps_count} gaps + {new_ids_count} new")
+            
+            return new_urls, available_ids
             
         except Exception as e:
             logger.error(f"Error filtering URLs from collection {collection_name}: {e}")
             print(f"❌ Error filtering URLs: {e}")
-            # Trả về tất cả URLs và ID = 0 nếu có lỗi (fail-safe)
-            return urls, id_fallback
+            # Trả về tất cả URLs và danh sách ID rỗng nếu có lỗi (fail-safe)
+            return urls, []
     
     @staticmethod
-    async def save_db_results(results: List[Dict[str, Any]], collection_name: Optional[str] = "crawl_results", _id: Optional[int] = 0) -> Optional[str]:
+    async def save_db_results(results: List[Dict[str, Any]], collection_name: Optional[str] = "crawl_results", available_ids: Optional[List[int]] = None) -> Optional[str]:
         """Lưu kết quả vào MongoDB - Insert mới hoặc Update nếu URL đã tồn tại"""        
         try:
             collection = get_collection(collection_name)
             
             inserted_count = 0
             updated_count = 0
-            # Convert _id to int for incrementing, will convert back to string when saving
-            current_new_id = int(_id) if isinstance(_id, str) else _id
+            # Sử dụng danh sách ID khả dụng hoặc tạo mới nếu không có
+            if available_ids is None:
+                available_ids = []
+            
+            id_index = 0  # Index để lấy ID từ available_ids
+            
             required_field = [
                 'link',
                 'room_type', 
@@ -210,12 +233,26 @@ class SaveUtils:
                     await collection.replace_one({"_id": existing_id}, document)
                     updated_count += 1
                 else:
-                    # URL mới → INSERT với _id mới
-                    current_new_id += 1  # Increment as integer
+                    # URL mới → INSERT với _id từ available_ids
+                    if id_index < len(available_ids):
+                        new_id = available_ids[id_index]
+                        id_index += 1
+                    else:
+                        # Fallback: nếu hết available_ids, tìm max_id và tăng dần
+                        max_id_doc = await collection.find_one(
+                            sort=[("_id", -1)],
+                            projection={"_id": 1}
+                        )
+                        if max_id_doc:
+                            max_id = int(max_id_doc["_id"]) if isinstance(max_id_doc["_id"], str) else max_id_doc["_id"]
+                            new_id = max_id + 1
+                        else:
+                            new_id = 1
+                    
                     document = {
                         **result,
                         "created_date": time.time(),
-                        "_id": str(current_new_id)  # Convert to string for MongoDB
+                        "_id": str(new_id)  # Convert to string for MongoDB
                     }
                     await collection.insert_one(document)
                     inserted_count += 1
